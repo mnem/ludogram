@@ -1,6 +1,8 @@
 {
   "glob": [
+    "README.md",
     "core/**/*.c",
     "ios/**/*.{c,m}"
-  ]
+  ],
+  "github": true
 }
