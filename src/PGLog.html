@@ -1,0 +1,57 @@
+<!DOCTYPE html><html lang="en"><head><title>src/PGLog</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="src/PGLog"><meta name="groc-project-path" content="core/src/PGLog.c"><meta name="groc-github-url" content="https://github.com/mnem/mnem"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path"><a href="https://github.com/mnem/mnem/blob/master/core/src/PGLog.c">core/src/PGLog.c</a></div></div><div id="document"><div class="segment"><div class="comments"><div class="wrapper"><p>PGLog.c
+ MobilePoly</p>
+
+<p>Created by David Wagner on 06/07/2012.
+ Copyright (c) 2012 Noise &amp; Heat. All rights reserved.</p></div></div><div class="code"><div class="wrapper"><span class="cp">#include &lt;stdio.h&gt;</span>
+<span class="cp">#include &lt;stdarg.h&gt;</span>
+<span class="cp">#include &quot;Pictogram.h&quot;</span>
+
+<span class="k">static</span> <span class="n">PGLogLevel</span> <span class="n">MinimumLogLevel</span> <span class="o">=</span> <span class="n">PGL_Error</span><span class="p">;</span>
+
+<span class="kt">void</span> <span class="nf">_pgLogv</span><span class="p">(</span><span class="n">PGLogLevel</span> <span class="n">level</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">fmt</span><span class="p">,</span> <span class="p">...)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">level</span> <span class="o">&gt;=</span> <span class="n">MinimumLogLevel</span><span class="p">)</span> 
+  <span class="p">{</span>
+    <span class="kt">va_list</span> <span class="n">ap</span><span class="p">;</span>
+    <span class="n">va_start</span><span class="p">(</span><span class="n">ap</span><span class="p">,</span> <span class="n">fmt</span><span class="p">);</span>
+    <span class="n">vprintf</span><span class="p">(</span><span class="n">fmt</span><span class="p">,</span> <span class="n">ap</span><span class="p">);</span>
+    <span class="n">va_end</span><span class="p">(</span><span class="n">ap</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">pgLogSetLevel</span><span class="p">(</span><span class="n">PGLogLevel</span> <span class="n">level</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">MinimumLogLevel</span> <span class="o">=</span> <span class="n">level</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">_pgLogAnyGlErrorsv</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">fmt</span><span class="p">,</span> <span class="p">...)</span>
+<span class="p">{</span>
+  <span class="n">GLenum</span> <span class="n">error</span> <span class="o">=</span> <span class="n">glGetError</span><span class="p">();</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">GL_NO_ERROR</span> <span class="o">!=</span> <span class="n">error</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="kt">va_list</span> <span class="n">ap</span><span class="p">;</span>
+    <span class="n">va_start</span><span class="p">(</span><span class="n">ap</span><span class="p">,</span> <span class="n">fmt</span><span class="p">);</span>
+    <span class="n">vprintf</span><span class="p">(</span><span class="n">fmt</span><span class="p">,</span> <span class="n">ap</span><span class="p">);</span>
+    <span class="n">va_end</span><span class="p">(</span><span class="n">ap</span><span class="p">);</span>
+    
+    <span class="k">switch</span> <span class="p">(</span><span class="n">error</span><span class="p">)</span> 
+    <span class="p">{</span>
+      <span class="k">case</span> <span class="n">GL_INVALID_ENUM</span>:     
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot; - Invalid enum.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+        <span class="k">break</span><span class="p">;</span>
+      <span class="k">case</span> <span class="n">GL_INVALID_VALUE</span>:    
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot; - Invalid value.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+        <span class="k">break</span><span class="p">;</span>
+      <span class="k">case</span> <span class="n">GL_INVALID_OPERATION</span>:
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot; - Invalid operation.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+        <span class="k">break</span><span class="p">;</span>
+      <span class="k">case</span> <span class="n">GL_OUT_OF_MEMORY</span>:    
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot; - Out of memory.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+        <span class="k">break</span><span class="p">;</span>
+        
+      <span class="nl">default:</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot; - Unrecognised gl error code: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">);</span>
+        <span class="k">break</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span></div></div></div></div></body></html>

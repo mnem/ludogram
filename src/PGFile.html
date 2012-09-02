@@ -1,0 +1,59 @@
+<!DOCTYPE html><html lang="en"><head><title>src/PGFile</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="src/PGFile"><meta name="groc-project-path" content="core/src/PGFile.c"><meta name="groc-github-url" content="https://github.com/mnem/mnem"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path"><a href="https://github.com/mnem/mnem/blob/master/core/src/PGFile.c">core/src/PGFile.c</a></div></div><div id="document"><div class="segment"><div class="comments"><div class="wrapper"><p>PGFile.c</p>
+
+<p>Created by David Wagner on 06/07/2012.
+ Copyright (c) 2012 Noise &amp; Heat. All rights reserved.</p></div></div><div class="code"><div class="wrapper"><span class="cp">#include &lt;stdio.h&gt;</span>
+<span class="cp">#include &lt;memory.h&gt;</span>
+<span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;sys/stat.h&gt;</span>
+<span class="cp">#include &lt;errno.h&gt;</span>
+
+<span class="cp">#include &quot;Pictogram.h&quot;</span>
+
+<span class="n">PGResult</span> <span class="nf">pgCreateStringFromFile</span><span class="p">(</span><span class="kt">char</span> <span class="o">**</span><span class="n">outString</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">file</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">outString</span><span class="p">)</span> 
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="n">PGR_NullPointerBarf</span><span class="p">;</span>
+  <span class="p">}</span>
+  </div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>So that the out value is always safe to free()</p></div></div><div class="code"><div class="wrapper">  <span class="o">*</span><span class="n">outString</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">file</span><span class="p">)</span> 
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="n">PGR_NullPointerBarf</span><span class="p">;</span>
+  <span class="p">}</span>
+  
+  <span class="k">struct</span> <span class="n">stat</span> <span class="n">status</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">0</span> <span class="p">};</span>
+  <span class="k">if</span> <span class="p">(</span><span class="mi">0</span> <span class="o">!=</span> <span class="n">stat</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">status</span><span class="p">))</span>
+  <span class="p">{</span>
+    <span class="n">pgLog</span><span class="p">(</span><span class="n">PGL_Error</span><span class="p">,</span> <span class="s">&quot;Could not get status for %s: %s&quot;</span><span class="p">,</span> 
+        <span class="n">file</span><span class="p">,</span> <span class="n">strerror</span><span class="p">(</span><span class="n">errno</span><span class="p">));</span>
+    <span class="k">return</span> <span class="n">PGR_CouldNotReadFile</span><span class="p">;</span>
+  <span class="p">}</span>
+  
+  <span class="kt">FILE</span> <span class="o">*</span><span class="n">filePointer</span> <span class="o">=</span> <span class="n">fopen</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="s">&quot;r&quot;</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">filePointer</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">pgLog</span><span class="p">(</span><span class="n">PGL_Error</span><span class="p">,</span> <span class="s">&quot;Could not open %s: %s&quot;</span><span class="p">,</span> 
+        <span class="n">file</span><span class="p">,</span> <span class="n">strerror</span><span class="p">(</span><span class="n">errno</span><span class="p">));</span>
+    <span class="k">return</span> <span class="n">PGR_CouldNotReadFile</span><span class="p">;</span>
+  <span class="p">}</span>
+  
+  <span class="kt">char</span> <span class="o">*</span><span class="n">string</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span><span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="n">status</span><span class="p">.</span><span class="n">st_size</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+  <span class="kt">size_t</span> <span class="n">read</span> <span class="o">=</span> <span class="n">fread</span><span class="p">(</span><span class="n">string</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">status</span><span class="p">.</span><span class="n">st_size</span><span class="p">,</span> <span class="n">filePointer</span><span class="p">);</span>
+  <span class="kt">int</span> <span class="n">closeErr</span> <span class="o">=</span> <span class="n">fclose</span><span class="p">(</span><span class="n">filePointer</span><span class="p">);</span>
+  <span class="n">string</span><span class="p">[</span><span class="n">read</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="o">*</span><span class="n">outString</span> <span class="o">=</span> <span class="n">string</span><span class="p">;</span>
+  </div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Treat size mis-matches and failures to close as warnings.
+I may live to regret this decision.</p></div></div><div class="code"><div class="wrapper">  <span class="k">if</span> <span class="p">(</span><span class="n">read</span> <span class="o">!=</span> <span class="n">status</span><span class="p">.</span><span class="n">st_size</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">pgLog</span><span class="p">(</span><span class="n">PGL_Warn</span><span class="p">,</span> <span class="s">&quot;Did not read all bytes in %s. Expected to read %d, but read %d&quot;</span><span class="p">,</span> 
+        <span class="n">file</span><span class="p">,</span> <span class="n">read</span><span class="p">,</span> <span class="n">status</span><span class="p">.</span><span class="n">st_size</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">if</span> <span class="p">(</span><span class="mi">0</span> <span class="o">!=</span> <span class="n">closeErr</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">pgLog</span><span class="p">(</span><span class="n">PGL_Warn</span><span class="p">,</span> <span class="s">&quot;Failed to close %s: %s&quot;</span><span class="p">,</span> 
+        <span class="n">file</span><span class="p">,</span> <span class="n">strerror</span><span class="p">(</span><span class="n">errno</span><span class="p">));</span>
+  <span class="p">}</span>
+  
+  <span class="k">return</span> <span class="n">PGR_OK</span><span class="p">;</span>
+<span class="p">}</span></div></div></div></div></body></html>

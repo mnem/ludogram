@@ -1,0 +1,40 @@
+<!DOCTYPE html><html lang="en"><head><title>src/PGContext</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="src/PGContext"><meta name="groc-project-path" content="core/src/PGContext.c"><meta name="groc-github-url" content="https://github.com/mnem/mnem"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path"><a href="https://github.com/mnem/mnem/blob/master/core/src/PGContext.c">core/src/PGContext.c</a></div></div><div id="document"><div class="segment"><div class="comments"><div class="wrapper"><p>PGContext.c
+ MobilePoly</p>
+
+<p>Created by David Wagner on 23/07/2012.
+ Copyright (c) 2012 Noise &amp; Heat. All rights reserved.</p></div></div><div class="code"><div class="wrapper"><span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;assert.h&gt;</span>
+<span class="cp">#include &quot;Pictogram.h&quot;</span>
+
+<span class="k">struct</span> <span class="n">PGContextPrivate</span> <span class="p">{</span>
+  <span class="kt">int</span> <span class="n">nothing</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="n">PGResult</span> <span class="nf">pgContextCreate</span><span class="p">(</span><span class="n">PGContext</span> <span class="o">*</span><span class="n">context</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">context</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="n">PGR_NullPointerBarf</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="o">*</span><span class="n">context</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  
+  <span class="n">PGContext</span> <span class="n">c</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">PGContextPrivate</span><span class="p">));</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">c</span><span class="p">)</span> <span class="k">return</span> <span class="n">PGR_OutOfMemory</span><span class="p">;</span>
+  <span class="o">*</span><span class="n">context</span> <span class="o">=</span> <span class="n">c</span><span class="p">;</span>
+  <span class="n">memset</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">PGContextPrivate</span><span class="p">));</span>
+  
+  <span class="k">return</span> <span class="n">PGR_OK</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">pgContextDestroy</span><span class="p">(</span><span class="n">PGContext</span> <span class="o">*</span><span class="n">context</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">!=</span> <span class="n">context</span> <span class="o">&amp;&amp;</span> <span class="nb">NULL</span> <span class="o">!=</span> <span class="o">*</span><span class="n">context</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">PGContext</span> <span class="n">c</span> <span class="o">=</span> <span class="o">*</span><span class="n">context</span><span class="p">;</span>
+    
+    <span class="n">memset</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">PGContextPrivate</span><span class="p">));</span>
+    <span class="n">free</span><span class="p">(</span><span class="n">c</span><span class="p">);</span>
+    
+    <span class="o">*</span><span class="n">context</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span></div></div></div></div></body></html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html><html lang="en"><head><title>src/PGRenderer</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="src/PGRenderer"><meta name="groc-project-path" content="core/src/PGRenderer.c"><meta name="groc-github-url" content="https://github.com/mnem/mnem"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path"><a href="https://github.com/mnem/mnem/blob/master/core/src/PGRenderer.c">core/src/PGRenderer.c</a></div></div><div id="document"><div class="segment"><div class="comments"><div class="wrapper"><p>PGRenderer.c
+ MobilePoly</p>
+
+<p>Created by David Wagner on 23/07/2012.
+ Copyright (c) 2012 Noise &amp; Heat. All rights reserved.</p></div></div><div class="code"><div class="wrapper"><span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;assert.h&gt;</span>
+<span class="cp">#include &quot;Pictogram.h&quot;</span>
+
+<span class="k">const</span> <span class="kt">int</span> <span class="n">NUM_FRAME_BUFFERS</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">int</span> <span class="n">NUM_RENDER_BUFFERS</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+
+<span class="k">struct</span> <span class="n">PGRendererPrivate</span> <span class="p">{</span>
+    <span class="n">GLuint</span> <span class="n">renderbuffer</span><span class="p">;</span>
+    <span class="n">GLuint</span> <span class="n">framebuffer</span><span class="p">;</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Currently active settings</p></div></div><div class="code"><div class="wrapper">  <span class="n">PGProgram</span> <span class="n">activeProgram</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">clearRendererContext</span><span class="p">(</span><span class="n">PGRenderer</span> <span class="n">renderer</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">memset</span><span class="p">(</span><span class="n">renderer</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">PGRendererPrivate</span><span class="p">));</span>
+  
+  <span class="n">renderer</span><span class="o">-&gt;</span><span class="n">activeProgram</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="n">PGResult</span> <span class="nf">pgRendererCreate</span><span class="p">(</span><span class="n">PGRenderer</span> <span class="o">*</span><span class="n">renderer</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">renderer</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="n">PGR_NullPointerBarf</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="o">*</span><span class="n">renderer</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  
+  <span class="n">PGRenderer</span> <span class="n">r</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">PGRendererPrivate</span><span class="p">));</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">r</span><span class="p">)</span> <span class="k">return</span> <span class="n">PGR_OutOfMemory</span><span class="p">;</span>
+  <span class="o">*</span><span class="n">renderer</span> <span class="o">=</span> <span class="n">r</span><span class="p">;</span>
+  <span class="n">clearRendererContext</span><span class="p">(</span><span class="n">r</span><span class="p">);</span>
+  </div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Create &amp; bind the color buffer so that the caller can allocate its space.</p></div></div><div class="code"><div class="wrapper">    <span class="n">glGenRenderbuffers</span><span class="p">(</span><span class="n">NUM_RENDER_BUFFERS</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">r</span><span class="o">-&gt;</span><span class="n">renderbuffer</span><span class="p">);</span>
+    <span class="n">glBindRenderbuffer</span><span class="p">(</span><span class="n">GL_RENDERBUFFER</span><span class="p">,</span> <span class="n">r</span><span class="o">-&gt;</span><span class="n">renderbuffer</span><span class="p">);</span>
+  
+  <span class="k">return</span> <span class="n">PGR_OK</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">pgRendererDestroy</span><span class="p">(</span><span class="n">PGRenderer</span> <span class="o">*</span><span class="n">renderer</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">!=</span> <span class="n">renderer</span> <span class="o">&amp;&amp;</span> <span class="nb">NULL</span> <span class="o">!=</span> <span class="o">*</span><span class="n">renderer</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">PGRenderer</span> <span class="n">r</span> <span class="o">=</span> <span class="o">*</span><span class="n">renderer</span><span class="p">;</span>
+    
+    <span class="n">glDeleteFramebuffers</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">r</span><span class="o">-&gt;</span><span class="n">framebuffer</span><span class="p">);</span>
+    <span class="n">glDeleteRenderbuffers</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">r</span><span class="o">-&gt;</span><span class="n">renderbuffer</span><span class="p">);</span>
+    
+    <span class="n">memset</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">PGRendererPrivate</span><span class="p">));</span>
+    <span class="n">free</span><span class="p">(</span><span class="n">r</span><span class="p">);</span>
+    
+    <span class="o">*</span><span class="n">renderer</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+
+<span class="n">PGResult</span> <span class="nf">pgRendererSetup</span><span class="p">(</span><span class="n">PGRenderer</span> <span class="n">renderer</span><span class="p">,</span> <span class="kt">int</span> <span class="n">width</span><span class="p">,</span> <span class="kt">int</span> <span class="n">height</span><span class="p">)</span>
+<span class="p">{</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Create the framebuffer object and attach the color buffer.</p></div></div><div class="code"><div class="wrapper">    <span class="n">glGenFramebuffers</span><span class="p">(</span><span class="n">NUM_FRAME_BUFFERS</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">renderer</span><span class="o">-&gt;</span><span class="n">framebuffer</span><span class="p">);</span>
+    <span class="n">glBindFramebuffer</span><span class="p">(</span><span class="n">GL_FRAMEBUFFER</span><span class="p">,</span> <span class="n">renderer</span><span class="o">-&gt;</span><span class="n">framebuffer</span><span class="p">);</span>
+    <span class="n">glFramebufferRenderbuffer</span><span class="p">(</span><span class="n">GL_FRAMEBUFFER</span><span class="p">,</span>
+                              <span class="n">GL_COLOR_ATTACHMENT0</span><span class="p">,</span>
+                              <span class="n">GL_RENDERBUFFER</span><span class="p">,</span>
+                              <span class="n">renderer</span><span class="o">-&gt;</span><span class="n">renderbuffer</span><span class="p">);</span>
+    
+    <span class="n">glViewport</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">);</span>
+  
+  <span class="k">return</span> <span class="n">PGR_OK</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="n">PGResult</span> <span class="nf">pgRendererUseProgram</span><span class="p">(</span><span class="n">PGRenderer</span> <span class="n">renderer</span><span class="p">,</span> <span class="n">PGProgram</span> <span class="n">program</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">program</span> <span class="o">!=</span> <span class="n">renderer</span><span class="o">-&gt;</span><span class="n">activeProgram</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">glUseProgram</span><span class="p">(</span><span class="n">pgProgramGlHandle</span><span class="p">(</span><span class="n">program</span><span class="p">));</span>
+    <span class="n">renderer</span><span class="o">-&gt;</span><span class="n">activeProgram</span> <span class="o">=</span> <span class="n">program</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="n">PGR_OK</span><span class="p">;</span>
+<span class="p">}</span></div></div></div></div></body></html>

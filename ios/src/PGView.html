@@ -1,0 +1,253 @@
+<!DOCTYPE html><html lang="en"><head><title>ios/src/PGView</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../../"><meta name="groc-document-path" content="ios/src/PGView"><meta name="groc-project-path" content="ios/src/PGView.m"><meta name="groc-github-url" content="https://github.com/mnem/mnem"><link rel="stylesheet" type="text/css" media="all" href="../../assets/style.css"><script type="text/javascript" src="../../assets/behavior.js"></script><body><div id="meta"><div class="file-path"><a href="https://github.com/mnem/mnem/blob/master/ios/src/PGView.m">ios/src/PGView.m</a></div></div><div id="document"><div class="segment"><div class="comments"><div class="wrapper"><p>PGView.m
+ MobilePoly</p>
+
+<p>Created by David Wagner on 23/07/2012.
+ Copyright (c) 2012 Noise &amp; Heat. All rights reserved.</p></div></div><div class="code"><div class="wrapper"><span class="cp">#import &lt;QuartzCore/QuartzCore.h&gt;</span>
+
+<span class="cp">#import &quot;PGView.h&quot;</span>
+<span class="cp">#import &quot;Pictogram.h&quot;</span>
+
+
+
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">ApplyOrtho</span><span class="p">(</span><span class="n">PGProgram</span> <span class="n">program</span><span class="p">,</span> <span class="kt">float</span> <span class="n">maxX</span><span class="p">,</span> <span class="kt">float</span> <span class="n">maxY</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">float</span> <span class="n">a</span> <span class="o">=</span> <span class="mf">1.0f</span> <span class="o">/</span> <span class="n">maxX</span><span class="p">;</span>
+    <span class="kt">float</span> <span class="n">b</span> <span class="o">=</span> <span class="mf">1.0f</span> <span class="o">/</span> <span class="n">maxY</span><span class="p">;</span>
+    <span class="kt">float</span> <span class="n">ortho</span><span class="p">[</span><span class="mi">16</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">a</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>  <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="mi">0</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span>  <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>  <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span>
+    <span class="p">};</span>
+    
+    <span class="n">GLint</span> <span class="n">projectionUniform</span> <span class="o">=</span> <span class="n">pgProgramUniformLocation</span><span class="p">(</span><span class="n">program</span><span class="p">,</span> <span class="s">&quot;projectionMatrix&quot;</span><span class="p">);</span><span class="c1">//  glGetUniformLocation(m_simpleProgram, &quot;Projection&quot;);</span>
+    <span class="n">glUniformMatrix4fv</span><span class="p">(</span><span class="n">projectionUniform</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ortho</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">ApplyRotation</span><span class="p">(</span><span class="n">PGProgram</span> <span class="n">program</span><span class="p">,</span> <span class="kt">float</span> <span class="n">degrees</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">float</span> <span class="n">radians</span> <span class="o">=</span> <span class="n">degrees</span> <span class="o">*</span> <span class="mf">3.14159f</span> <span class="o">/</span> <span class="mf">180.0f</span><span class="p">;</span>
+    <span class="kt">float</span> <span class="n">s</span> <span class="o">=</span> <span class="n">sin</span><span class="p">(</span><span class="n">radians</span><span class="p">);</span>
+    <span class="kt">float</span> <span class="n">c</span> <span class="o">=</span> <span class="n">cos</span><span class="p">(</span><span class="n">radians</span><span class="p">);</span>
+    <span class="kt">float</span> <span class="n">zRotation</span><span class="p">[</span><span class="mi">16</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">c</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="o">-</span><span class="n">s</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span>
+    <span class="p">};</span>
+    
+    <span class="n">GLint</span> <span class="n">modelviewUniform</span> <span class="o">=</span> <span class="n">pgProgramUniformLocation</span><span class="p">(</span><span class="n">program</span><span class="p">,</span> <span class="s">&quot;modelViewMatrix&quot;</span><span class="p">);</span>
+    <span class="n">glUniformMatrix4fv</span><span class="p">(</span><span class="n">modelviewUniform</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">zRotation</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
+<span class="p">}</span>
+
+
+<span class="k">@interface</span> <span class="nc">PGView</span> <span class="p">()</span>
+<span class="p">{</span>
+    <span class="n">GLuint</span> <span class="n">_vertexArray</span><span class="p">;</span>
+    <span class="n">GLuint</span> <span class="n">_vertexBuffer</span><span class="p">;</span>
+  <span class="n">PGProgram</span> <span class="n">_pgprogram</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="o">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">setupGL</span><span class="p">;</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">tearDownGL</span><span class="p">;</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">loadShaders</span><span class="p">;</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="nf">hacky</span><span class="p">;</span>
+
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="nf">drawView:</span> <span class="p">(</span><span class="n">CADisplayLink</span><span class="o">*</span><span class="p">)</span> <span class="n">displayLink</span><span class="p">;</span>
+
+<span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">EAGLContext</span> <span class="o">*</span><span class="n">eaglContext</span><span class="p">;</span>
+<span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">CADisplayLink</span> <span class="o">*</span><span class="n">displayLink</span><span class="p">;</span>
+
+<span class="k">@property</span> <span class="p">(</span><span class="n">unsafe_unretained</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">PGRenderer</span> <span class="n">renderer</span><span class="p">;</span>
+
+<span class="k">@end</span>
+
+<span class="k">@implementation</span> <span class="nc">PGView</span>
+
+<span class="k">@synthesize</span> <span class="n">displayLink</span> <span class="o">=</span> <span class="n">_displayLink</span><span class="p">;</span>
+<span class="k">@synthesize</span> <span class="n">delegate</span> <span class="o">=</span> <span class="n">_delegate</span><span class="p">;</span>
+<span class="k">@synthesize</span> <span class="n">eaglContext</span> <span class="o">=</span> <span class="n">_eaglContext</span><span class="p">;</span>
+<span class="k">@synthesize</span> <span class="n">renderer</span> <span class="o">=</span> <span class="n">_renderer</span><span class="p">;</span>
+
+<span class="k">+</span> <span class="p">(</span><span class="n">Class</span><span class="p">)</span> <span class="nf">layerClass</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">CAEAGLLayer</span> <span class="n">class</span><span class="p">];</span>
+<span class="p">}</span>
+
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">dealloc</span>
+<span class="p">{</span>
+    <span class="n">pgRendererDestroy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">_renderer</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">-</span> <span class="p">(</span><span class="kt">id</span><span class="p">)</span><span class="nf">initWithCoder:</span><span class="p">(</span><span class="n">NSCoder</span> <span class="o">*</span><span class="p">)</span><span class="nv">aDecoder</span>
+<span class="p">{</span>
+    <span class="n">self</span> <span class="o">=</span> <span class="p">[</span><span class="n">super</span> <span class="nl">initWithCoder:</span><span class="n">aDecoder</span><span class="p">];</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">self</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="p">[</span><span class="n">self</span> <span class="n">setupEAGLContextAndRunLoop</span><span class="p">])</span>
+    <span class="p">{</span>
+      <span class="n">self</span> <span class="o">=</span> <span class="nb">nil</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">else</span>
+    <span class="p">{</span>
+      <span class="p">[</span><span class="n">self</span> <span class="n">hacky</span><span class="p">];</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="n">self</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">-</span> <span class="p">(</span><span class="kt">id</span><span class="p">)</span><span class="nf">initWithFrame:</span><span class="p">(</span><span class="n">CGRect</span><span class="p">)</span><span class="nv">frame</span>
+<span class="p">{</span>
+    <span class="n">self</span> <span class="o">=</span> <span class="p">[</span><span class="n">super</span> <span class="nl">initWithFrame:</span><span class="n">frame</span><span class="p">];</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">self</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="p">[</span><span class="n">self</span> <span class="n">setupEAGLContextAndRunLoop</span><span class="p">])</span>
+    <span class="p">{</span>
+      <span class="n">self</span> <span class="o">=</span> <span class="nb">nil</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">else</span>
+    <span class="p">{</span>
+      <span class="p">[</span><span class="n">self</span> <span class="n">hacky</span><span class="p">];</span>
+    <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">self</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">setupEAGLContextAndRunLoop</span>
+<span class="p">{</span>
+  <span class="n">CAEAGLLayer</span><span class="o">*</span> <span class="n">eaglLayer</span> <span class="o">=</span> <span class="p">(</span><span class="n">CAEAGLLayer</span><span class="o">*</span><span class="p">)</span> <span class="n">super</span><span class="p">.</span><span class="n">layer</span><span class="p">;</span>
+  <span class="n">eaglLayer</span><span class="p">.</span><span class="n">opaque</span> <span class="o">=</span> <span class="n">YES</span><span class="p">;</span>
+  
+  <span class="n">self</span><span class="p">.</span><span class="n">eaglContext</span> <span class="o">=</span> <span class="p">[[</span><span class="n">EAGLContext</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithAPI:</span><span class="n">kEAGLRenderingAPIOpenGLES2</span><span class="p">];</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">_eaglContext</span> <span class="o">||</span> <span class="o">!</span><span class="p">[</span><span class="n">self</span> <span class="n">makeContextCurrent</span><span class="p">])</span>
+  <span class="p">{</span>
+    <span class="n">pgLog</span><span class="p">(</span><span class="n">PGL_Error</span><span class="p">,</span> <span class="s">&quot;Could not create EAGLEContext&quot;</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">NO</span><span class="p">;</span>
+  <span class="p">}</span>
+  
+  <span class="n">pgLogAnyGlErrors</span><span class="p">(</span><span class="s">&quot;About to create PGRenderer&quot;</span><span class="p">);</span>
+  <span class="n">pgRendererCreate</span><span class="p">(</span><span class="o">&amp;</span><span class="n">_renderer</span><span class="p">);</span>
+  
+  <span class="n">pgLogAnyGlErrors</span><span class="p">(</span><span class="s">&quot;About to bind renderBufferStorage&quot;</span><span class="p">);</span>
+  <span class="p">[</span><span class="n">_eaglContext</span> <span class="nl">renderbufferStorage:</span><span class="n">GL_RENDERBUFFER</span> <span class="nl">fromDrawable:</span> <span class="n">eaglLayer</span><span class="p">];</span>
+  
+  <span class="n">pgLogAnyGlErrors</span><span class="p">(</span><span class="s">&quot;About to setup PGRenderer&quot;</span><span class="p">);</span>
+  <span class="n">pgRendererSetup</span><span class="p">(</span><span class="n">_renderer</span><span class="p">,</span> <span class="n">CGRectGetWidth</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">bounds</span><span class="p">),</span> <span class="n">CGRectGetHeight</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">bounds</span><span class="p">));</span>
+  <span class="n">pgLogAnyGlErrors</span><span class="p">(</span><span class="s">&quot;Setup PGRenderer&quot;</span><span class="p">);</span>
+
+  <span class="n">self</span><span class="p">.</span><span class="n">displayLink</span> <span class="o">=</span> <span class="p">[</span><span class="n">CADisplayLink</span> <span class="nl">displayLinkWithTarget:</span><span class="n">self</span>
+                           <span class="nl">selector:</span><span class="k">@selector</span><span class="p">(</span><span class="nl">drawView:</span><span class="p">)];</span>
+
+  
+  <span class="p">[</span><span class="n">_displayLink</span> <span class="nl">addToRunLoop:</span><span class="p">[</span><span class="n">NSRunLoop</span> <span class="n">currentRunLoop</span><span class="p">]</span>
+             <span class="nl">forMode:</span><span class="n">NSDefaultRunLoopMode</span><span class="p">];</span>
+  </div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>[self drawView: nil];</p></div></div><div class="code"><div class="wrapper">  
+  <span class="k">return</span> <span class="n">YES</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">makeContextCurrent</span>
+<span class="p">{</span>
+  <span class="k">return</span> <span class="p">[</span><span class="n">EAGLContext</span> <span class="nl">setCurrentContext:</span><span class="n">_eaglContext</span><span class="p">];</span>
+<span class="p">}</span>
+
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="nf">drawView:</span><span class="p">(</span><span class="n">CADisplayLink</span><span class="o">*</span><span class="p">)</span> <span class="n">displayLink</span>
+<span class="p">{</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>TODO: I wonder if I should call [self makeContextCurrent];</p></div></div><div class="code"><div class="wrapper">  <span class="k">if</span> <span class="p">(</span><span class="nb">nil</span> <span class="o">!=</span> <span class="n">_delegate</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="p">[</span><span class="n">_delegate</span> <span class="nl">renderPGView:</span><span class="n">self</span><span class="p">];</span>
+  <span class="p">}</span>
+  
+  <span class="p">[</span><span class="n">self</span> <span class="nl">renderPGView:</span><span class="n">self</span><span class="p">];</span>
+  
+    <span class="p">[</span><span class="n">_eaglContext</span> <span class="nl">presentRenderbuffer:</span><span class="n">GL_RENDERBUFFER</span><span class="p">];</span>
+<span class="p">}</span>
+
+<span class="o">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">hacky</span>
+<span class="p">{</span>
+  <span class="p">[</span><span class="n">self</span> <span class="n">setupGL</span><span class="p">];</span>
+<span class="p">}</span>
+
+<span class="o">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">setupGL</span>
+<span class="p">{</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>PGView *pgv = (PGView *)self.view;
+pgv.delegate = self;</p></div></div><div class="code"><div class="wrapper">  
+  <span class="p">[</span><span class="n">self</span> <span class="n">makeContextCurrent</span><span class="p">];</span>
+  
+    <span class="p">[</span><span class="n">self</span> <span class="n">loadShaders</span><span class="p">];</span>
+  
+  <span class="n">pgRendererUseProgram</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">renderer</span><span class="p">,</span> <span class="n">_pgprogram</span><span class="p">);</span>
+  
+  <span class="n">ApplyOrtho</span><span class="p">(</span><span class="n">_pgprogram</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="o">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">tearDownGL</span>
+<span class="p">{</span>
+  <span class="n">pgProgramDestroy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">_pgprogram</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="kt">float</span> <span class="n">Position</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+  <span class="kt">float</span> <span class="n">Color</span><span class="p">[</span><span class="mi">4</span><span class="p">];</span>
+<span class="p">}</span> <span class="n">Vertex</span><span class="p">;</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Define the positions and colors of two triangles.</p></div></div><div class="code"><div class="wrapper"><span class="k">const</span> <span class="k">static</span> <span class="n">Vertex</span> <span class="n">Vertices</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="p">{{</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.866</span><span class="p">},</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.5f</span><span class="p">,</span> <span class="mi">1</span><span class="p">}},</span>
+    <span class="p">{{</span><span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.866</span><span class="p">},</span>  <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.5f</span><span class="p">,</span> <span class="mi">1</span><span class="p">}},</span>
+    <span class="p">{{</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">},</span>         <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.5f</span><span class="p">,</span> <span class="mi">1</span><span class="p">}},</span>
+    <span class="p">{{</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.866</span><span class="p">},</span> <span class="p">{</span><span class="mf">0.5f</span><span class="p">,</span> <span class="mf">0.5f</span><span class="p">,</span> <span class="mf">0.5f</span><span class="p">}},</span>
+    <span class="p">{{</span><span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.866</span><span class="p">},</span>  <span class="p">{</span><span class="mf">0.5f</span><span class="p">,</span> <span class="mf">0.5f</span><span class="p">,</span> <span class="mf">0.5f</span><span class="p">}},</span>
+    <span class="p">{{</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.4f</span><span class="p">},</span>     <span class="p">{</span><span class="mf">0.5f</span><span class="p">,</span> <span class="mf">0.5f</span><span class="p">,</span> <span class="mf">0.5f</span><span class="p">}},</span>
+<span class="p">};</span>
+
+
+
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">renderPGView:</span><span class="p">(</span><span class="n">PGView</span> <span class="o">*</span><span class="p">)</span><span class="nv">pgView</span>
+<span class="p">{</span>
+  <span class="n">glClearColor</span><span class="p">(</span><span class="mf">0.5f</span><span class="p">,</span> <span class="mf">0.5f</span><span class="p">,</span> <span class="mf">0.5f</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+  <span class="n">glClear</span><span class="p">(</span><span class="n">GL_COLOR_BUFFER_BIT</span><span class="p">);</span>
+  
+  <span class="n">ApplyRotation</span><span class="p">(</span><span class="n">_pgprogram</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+  
+  <span class="n">GLuint</span> <span class="n">positionSlot</span> <span class="o">=</span> <span class="n">pgProgramAttribLocation</span><span class="p">(</span><span class="n">_pgprogram</span><span class="p">,</span> <span class="s">&quot;position&quot;</span><span class="p">);</span>
+  <span class="n">GLuint</span> <span class="n">colorSlot</span> <span class="o">=</span> <span class="n">pgProgramAttribLocation</span><span class="p">(</span><span class="n">_pgprogram</span><span class="p">,</span> <span class="s">&quot;color&quot;</span><span class="p">);</span>
+  
+  <span class="n">glEnableVertexAttribArray</span><span class="p">(</span><span class="n">positionSlot</span><span class="p">);</span>
+  <span class="n">glEnableVertexAttribArray</span><span class="p">(</span><span class="n">colorSlot</span><span class="p">);</span>
+  
+  <span class="n">GLsizei</span> <span class="n">stride</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">Vertex</span><span class="p">);</span>
+  <span class="k">const</span> <span class="n">GLvoid</span><span class="o">*</span> <span class="n">pCoords</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">Vertices</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">Position</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+  <span class="k">const</span> <span class="n">GLvoid</span><span class="o">*</span> <span class="n">pColors</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">Vertices</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">Color</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+  
+  <span class="n">glVertexAttribPointer</span><span class="p">(</span><span class="n">positionSlot</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">GL_FLOAT</span><span class="p">,</span> <span class="n">GL_FALSE</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">pCoords</span><span class="p">);</span>
+  <span class="n">glVertexAttribPointer</span><span class="p">(</span><span class="n">colorSlot</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">GL_FLOAT</span><span class="p">,</span> <span class="n">GL_FALSE</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">pColors</span><span class="p">);</span>
+  
+  <span class="n">GLsizei</span> <span class="n">vertexCount</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">Vertices</span><span class="p">)</span> <span class="o">/</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">Vertex</span><span class="p">);</span>
+  <span class="n">glDrawArrays</span><span class="p">(</span><span class="n">GL_TRIANGLES</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">vertexCount</span><span class="p">);</span>
+  
+  <span class="n">glDisableVertexAttribArray</span><span class="p">(</span><span class="n">positionSlot</span><span class="p">);</span>
+  <span class="n">glDisableVertexAttribArray</span><span class="p">(</span><span class="n">colorSlot</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">loadShaders</span>
+<span class="p">{</span>
+    <span class="n">NSString</span> <span class="o">*</span><span class="n">vertShaderPathname</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSBundle</span> <span class="n">mainBundle</span><span class="p">]</span> <span class="nl">pathForResource:</span><span class="s">@&quot;mvp_col&quot;</span> <span class="nl">ofType:</span><span class="s">@&quot;vsh&quot;</span> <span class="nl">inDirectory:</span><span class="s">@&quot;shaders&quot;</span><span class="p">];</span>
+    <span class="n">NSString</span> <span class="o">*</span><span class="n">fragShaderPathname</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSBundle</span> <span class="n">mainBundle</span><span class="p">]</span> <span class="nl">pathForResource:</span><span class="s">@&quot;mvp_col&quot;</span> <span class="nl">ofType:</span><span class="s">@&quot;fsh&quot;</span> <span class="nl">inDirectory:</span><span class="s">@&quot;shaders&quot;</span><span class="p">];</span>
+  <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">vertShader</span> <span class="o">=</span> <span class="p">[</span><span class="n">vertShaderPathname</span> <span class="nl">cStringUsingEncoding:</span><span class="n">NSUTF8StringEncoding</span><span class="p">];</span>
+  <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">fragShader</span> <span class="o">=</span> <span class="p">[</span><span class="n">fragShaderPathname</span> <span class="nl">cStringUsingEncoding:</span><span class="n">NSUTF8StringEncoding</span><span class="p">];</span>
+  <span class="n">pgLogAnyGlErrors</span><span class="p">(</span><span class="s">&quot;In loadShaders&quot;</span><span class="p">);</span>
+  <span class="n">PGResult</span> <span class="n">result</span> <span class="o">=</span> <span class="n">pgProgramCreateAndBuild</span><span class="p">(</span><span class="o">&amp;</span><span class="n">_pgprogram</span><span class="p">,</span> <span class="n">vertShader</span><span class="p">,</span> <span class="n">fragShader</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">PGR_OK</span> <span class="o">!=</span> <span class="n">result</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">pgLog</span><span class="p">(</span><span class="n">PGL_Error</span><span class="p">,</span> <span class="s">&quot;Failed to build program (%d), logs:</span><span class="se">\n</span><span class="s">-- Vertex --</span><span class="se">\n</span><span class="s">%s</span><span class="se">\n</span><span class="s">-- Fragment --</span><span class="se">\n</span><span class="s">%s</span><span class="se">\n</span><span class="s">-- Link --</span><span class="se">\n</span><span class="s">%s&quot;</span><span class="p">,</span>
+        <span class="n">result</span><span class="p">,</span>
+        <span class="n">pgProgramVertexShaderCompileLog</span><span class="p">(</span><span class="n">_pgprogram</span><span class="p">),</span>
+        <span class="n">pgProgramFragmentShaderCompileLog</span><span class="p">(</span><span class="n">_pgprogram</span><span class="p">),</span>
+        <span class="n">pgProgramLinkLog</span><span class="p">(</span><span class="n">_pgprogram</span><span class="p">));</span>
+  <span class="p">}</span>
+  <span class="k">else</span>
+  <span class="p">{</span>
+    <span class="n">pgLog</span><span class="p">(</span><span class="n">PGL_Info</span><span class="p">,</span> <span class="s">&quot;Built program successfully (%d), logs:</span><span class="se">\n</span><span class="s">-- Vertex --</span><span class="se">\n</span><span class="s">%s</span><span class="se">\n</span><span class="s">-- Fragment --</span><span class="se">\n</span><span class="s">%s</span><span class="se">\n</span><span class="s">-- Link --</span><span class="se">\n</span><span class="s">%s&quot;</span><span class="p">,</span>
+        <span class="n">result</span><span class="p">,</span>
+        <span class="n">pgProgramVertexShaderCompileLog</span><span class="p">(</span><span class="n">_pgprogram</span><span class="p">),</span>
+        <span class="n">pgProgramFragmentShaderCompileLog</span><span class="p">(</span><span class="n">_pgprogram</span><span class="p">),</span>
+        <span class="n">pgProgramLinkLog</span><span class="p">(</span><span class="n">_pgprogram</span><span class="p">));</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="n">result</span> <span class="o">==</span> <span class="n">PGR_OK</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">@end</span></div></div></div></div></body></html>

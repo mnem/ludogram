@@ -1,0 +1,416 @@
+<!DOCTYPE html><html lang="en"><head><title>src/PGProgram</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="src/PGProgram"><meta name="groc-project-path" content="core/src/PGProgram.c"><meta name="groc-github-url" content="https://github.com/mnem/mnem"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path"><a href="https://github.com/mnem/mnem/blob/master/core/src/PGProgram.c">core/src/PGProgram.c</a></div></div><div id="document"><div class="segment"><div class="comments"><div class="wrapper"><p>PGProgramCompiler.c</p>
+
+<p>Created by David Wagner on 01/07/2012.
+ Copyright (c) 2012 Noise &amp; Heat. All rights reserved.</p></div></div><div class="code"><div class="wrapper"><span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;assert.h&gt;</span>
+<span class="cp">#include &quot;Pictogram.h&quot;</span>
+
+<span class="cp">#define UNKNOWN (1)</span>
+<span class="k">struct</span> <span class="n">PGProgramVariable</span> <span class="p">{</span>
+  <span class="n">UT_hash_handle</span> <span class="n">hh</span><span class="p">;</span>  <span class="cm">/* makes this structure hashable     */</span>
+  <span class="n">GLint</span> <span class="n">location</span><span class="p">;</span>     <span class="cm">/* variable&#39;s location               */</span>
+  <span class="n">GLint</span> <span class="n">size</span><span class="p">;</span>
+  <span class="n">GLenum</span> <span class="n">type</span><span class="p">;</span>
+  <span class="kt">char</span> <span class="n">name</span><span class="p">[</span><span class="n">UNKNOWN</span><span class="p">];</span> <span class="cm">/* variable&#39;s name. Key for the hash. Actual size made by magic */</span>
+<span class="p">};</span>
+<span class="cp">#undef UNKNOWN</span>
+
+<span class="k">struct</span> <span class="n">PGProgramPrivate</span> <span class="p">{</span>
+  <span class="n">GLuint</span> <span class="n">program</span><span class="p">;</span> <span class="cm">/* This must always be the first member so we can masquerade as a GLuint pointer */</span>
+  <span class="n">GLuint</span> <span class="n">vertexShader</span><span class="p">;</span>
+  <span class="n">GLuint</span> <span class="n">fragmentShader</span><span class="p">;</span>
+  
+  <span class="n">GLchar</span> <span class="o">*</span><span class="n">programLinkLog</span><span class="p">;</span>
+  <span class="n">GLchar</span> <span class="o">*</span><span class="n">vertexShaderCompileLog</span><span class="p">;</span>
+  <span class="n">GLchar</span> <span class="o">*</span><span class="n">fragmentShaderCompileLog</span><span class="p">;</span>
+  
+  <span class="k">struct</span> <span class="n">PGProgramVariable</span> <span class="o">*</span><span class="n">attributesHash</span><span class="p">;</span>
+  <span class="k">struct</span> <span class="n">PGProgramVariable</span> <span class="o">*</span><span class="n">uniformsHash</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * Used to pass the relevant Attrib or Uniform query function for extracting variables</span>
+<span class="cm"> * from programs</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">GetActiveVariableFn</span><span class="p">)(</span><span class="n">GLuint</span><span class="p">,</span> <span class="n">GLuint</span><span class="p">,</span> <span class="n">GLsizei</span><span class="p">,</span> <span class="n">GLsizei</span> <span class="o">*</span><span class="p">,</span> <span class="n">GLint</span> <span class="o">*</span><span class="p">,</span> <span class="n">GLenum</span> <span class="o">*</span><span class="p">,</span> <span class="n">GLchar</span> <span class="o">*</span><span class="p">);</span>
+<span class="k">typedef</span> <span class="n">GLint</span> <span class="p">(</span><span class="o">*</span><span class="n">GetVariableLocationFn</span><span class="p">)(</span><span class="n">GLuint</span><span class="p">,</span> <span class="k">const</span> <span class="n">GLchar</span> <span class="o">*</span><span class="p">);</span>
+
+<span class="k">static</span> <span class="n">PGResult</span> <span class="nf">pgCompileShaderString</span><span class="p">(</span><span class="n">GLuint</span> <span class="o">*</span><span class="n">outShader</span><span class="p">,</span> <span class="n">GLenum</span> <span class="n">type</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">source</span><span class="p">,</span> <span class="n">GLchar</span> <span class="o">**</span><span class="n">outLog</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">outShader</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="n">PGR_NullPointerBarf</span><span class="p">;</span>
+  <span class="p">}</span>
+  
+  <span class="n">pgLogAnyGlErrors</span><span class="p">(</span><span class="s">&quot;Preparing to create and compile shader.&quot;</span><span class="p">);</span>
+    <span class="o">*</span><span class="n">outShader</span> <span class="o">=</span> <span class="n">glCreateShader</span><span class="p">(</span><span class="n">type</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="mi">0</span> <span class="o">==</span> <span class="o">*</span><span class="n">outShader</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">pgLogAnyGlErrors</span><span class="p">(</span><span class="s">&quot;Could not create shader.&quot;</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">PGR_CouldNotCreateShader</span><span class="p">;</span>
+  <span class="p">}</span>
+    <span class="n">glShaderSource</span><span class="p">(</span><span class="o">*</span><span class="n">outShader</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">source</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+    <span class="n">glCompileShader</span><span class="p">(</span><span class="o">*</span><span class="n">outShader</span><span class="p">);</span>
+  <span class="n">pgLogAnyGlErrors</span><span class="p">(</span><span class="s">&quot;Compile shader.&quot;</span><span class="p">);</span>
+  
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">!=</span> <span class="n">outLog</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">GLint</span> <span class="n">logLength</span><span class="p">;</span>
+    <span class="n">GLchar</span> <span class="o">*</span><span class="n">log</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="n">glGetShaderiv</span><span class="p">(</span><span class="o">*</span><span class="n">outShader</span><span class="p">,</span> <span class="n">GL_INFO_LOG_LENGTH</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">logLength</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">logLength</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> 
+    <span class="p">{</span>
+      <span class="n">log</span> <span class="o">=</span> <span class="p">(</span><span class="n">GLchar</span> <span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="n">logLength</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">GLchar</span><span class="p">));</span>
+      <span class="n">glGetShaderInfoLog</span><span class="p">(</span><span class="o">*</span><span class="n">outShader</span><span class="p">,</span> <span class="n">logLength</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">logLength</span><span class="p">,</span> <span class="n">log</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">else</span> 
+    <span class="p">{</span>
+      <span class="n">log</span> <span class="o">=</span> <span class="p">(</span><span class="n">GLchar</span> <span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">GLchar</span><span class="p">));</span>
+      <span class="n">log</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="o">*</span><span class="n">outLog</span> <span class="o">=</span> <span class="n">log</span><span class="p">;</span>
+  <span class="p">}</span>
+    
+    <span class="n">GLint</span> <span class="n">status</span><span class="p">;</span>
+    <span class="n">glGetShaderiv</span><span class="p">(</span><span class="o">*</span><span class="n">outShader</span><span class="p">,</span> <span class="n">GL_COMPILE_STATUS</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">status</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">GL_FALSE</span> <span class="o">==</span> <span class="n">status</span><span class="p">)</span> 
+  <span class="p">{</span>
+        <span class="n">glDeleteShader</span><span class="p">(</span><span class="o">*</span><span class="n">outShader</span><span class="p">);</span>
+    <span class="o">*</span><span class="n">outShader</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="k">return</span> <span class="n">PGR_CouldNotCompileShader</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="n">pgLogAnyGlErrors</span><span class="p">(</span><span class="s">&quot;Check shader log.&quot;</span><span class="p">);</span>
+  
+  <span class="k">return</span> <span class="n">PGR_OK</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="n">PGResult</span> <span class="nf">pgCompileShaderFile</span><span class="p">(</span><span class="n">GLuint</span> <span class="o">*</span><span class="n">outShader</span><span class="p">,</span> <span class="n">GLenum</span> <span class="n">type</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">file</span><span class="p">,</span> <span class="n">GLchar</span> <span class="o">**</span><span class="n">outLog</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">char</span> <span class="o">*</span><span class="n">source</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">PGR_OK</span> <span class="o">!=</span> <span class="n">pgCreateStringFromFile</span><span class="p">(</span><span class="o">&amp;</span><span class="n">source</span><span class="p">,</span> <span class="n">file</span><span class="p">))</span>
+  <span class="p">{</span>
+    <span class="n">pgLog</span><span class="p">(</span><span class="n">PGL_Error</span><span class="p">,</span> <span class="s">&quot;Could not load shader file %s&quot;</span><span class="p">,</span> <span class="n">file</span><span class="p">);</span>
+    <span class="n">free</span><span class="p">(</span><span class="n">source</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">PGR_CouldNotReadFile</span><span class="p">;</span>
+  <span class="p">}</span>
+  
+  <span class="n">PGResult</span> <span class="n">result</span> <span class="o">=</span> <span class="n">pgCompileShaderString</span><span class="p">(</span><span class="n">outShader</span><span class="p">,</span> <span class="n">type</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">outLog</span><span class="p">);</span>
+  
+  <span class="n">free</span><span class="p">(</span><span class="n">source</span><span class="p">);</span>
+  
+  <span class="k">return</span> <span class="n">result</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="n">PGResult</span> <span class="nf">pgLinkProgram</span><span class="p">(</span><span class="n">GLuint</span> <span class="n">program</span><span class="p">,</span> <span class="n">GLuint</span> <span class="n">vertexShader</span><span class="p">,</span> <span class="n">GLuint</span> <span class="n">fragmentShader</span><span class="p">,</span> <span class="n">GLchar</span> <span class="o">**</span><span class="n">outLog</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="mi">0</span> <span class="o">==</span> <span class="n">program</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="n">PGR_InvalidProgram</span><span class="p">;</span>
+  <span class="p">}</span>
+  
+  <span class="k">if</span> <span class="p">(</span><span class="mi">0</span> <span class="o">!=</span> <span class="n">vertexShader</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">glAttachShader</span><span class="p">(</span><span class="n">program</span><span class="p">,</span> <span class="n">vertexShader</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">if</span> <span class="p">(</span><span class="mi">0</span> <span class="o">!=</span> <span class="n">fragmentShader</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">glAttachShader</span><span class="p">(</span><span class="n">program</span><span class="p">,</span> <span class="n">fragmentShader</span><span class="p">);</span>
+  <span class="p">}</span>
+  
+  <span class="n">pgLogAnyGlErrors</span><span class="p">(</span><span class="s">&quot;About to link program.&quot;</span><span class="p">);</span>
+  <span class="n">glLinkProgram</span><span class="p">(</span><span class="n">program</span><span class="p">);</span>
+  <span class="n">pgLogAnyGlErrors</span><span class="p">(</span><span class="s">&quot;Linked program.&quot;</span><span class="p">);</span>
+  
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">!=</span> <span class="n">outLog</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">GLint</span> <span class="n">logLength</span><span class="p">;</span>
+    <span class="n">GLchar</span> <span class="o">*</span><span class="n">log</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="n">glGetProgramiv</span><span class="p">(</span><span class="n">program</span><span class="p">,</span> <span class="n">GL_INFO_LOG_LENGTH</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">logLength</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">logLength</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> 
+    <span class="p">{</span>
+      <span class="n">log</span> <span class="o">=</span> <span class="p">(</span><span class="n">GLchar</span> <span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="n">logLength</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">GLchar</span><span class="p">));</span>
+      <span class="n">glGetProgramInfoLog</span><span class="p">(</span><span class="n">program</span><span class="p">,</span> <span class="n">logLength</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">logLength</span><span class="p">,</span> <span class="n">log</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="o">*</span><span class="n">outLog</span> <span class="o">=</span> <span class="n">log</span><span class="p">;</span>
+  <span class="p">}</span>
+    
+    <span class="n">GLint</span> <span class="n">status</span><span class="p">;</span>
+    <span class="n">glGetProgramiv</span><span class="p">(</span><span class="n">program</span><span class="p">,</span> <span class="n">GL_LINK_STATUS</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">status</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">GL_FALSE</span> <span class="o">==</span> <span class="n">status</span><span class="p">)</span> 
+  <span class="p">{</span>
+        <span class="k">return</span> <span class="n">PGR_CouldNotLinkProgram</span><span class="p">;</span>
+    <span class="p">}</span>
+  
+  <span class="k">return</span> <span class="n">PGR_OK</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="n">GLint</span> <span class="nf">pgProgramVariableLocation</span><span class="p">(</span><span class="k">struct</span> <span class="n">PGProgramVariable</span> <span class="o">*</span><span class="n">hash</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">name</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">hash</span> <span class="o">||</span> <span class="nb">NULL</span> <span class="o">==</span> <span class="n">name</span><span class="p">)</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+  <span class="k">struct</span> <span class="n">PGProgramVariable</span> <span class="o">*</span><span class="n">var</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  
+  <span class="n">HASH_FIND_STR</span><span class="p">(</span><span class="n">hash</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span><span class="p">);</span>
+  
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">var</span> <span class="p">)</span>
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">else</span> 
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="n">var</span><span class="o">-&gt;</span><span class="n">location</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="n">GLenum</span> <span class="nf">pgProgramVariableType</span><span class="p">(</span><span class="k">struct</span> <span class="n">PGProgramVariable</span> <span class="o">*</span><span class="n">hash</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">name</span><span class="p">)</span>
+<span class="p">{</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>TODO: Check if it's actually valid to return GL<em>INVALID</em>ENUM, that
+is it won't clash with an enum. I'm not sure what context it's
+used in (i.e. is it an error code or an enum?)</p></div></div><div class="code"><div class="wrapper">  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">hash</span> <span class="o">||</span> <span class="nb">NULL</span> <span class="o">==</span> <span class="n">name</span><span class="p">)</span> <span class="k">return</span> <span class="n">GL_INVALID_ENUM</span><span class="p">;</span>
+  <span class="k">struct</span> <span class="n">PGProgramVariable</span> <span class="o">*</span><span class="n">var</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  
+  <span class="n">HASH_FIND_STR</span><span class="p">(</span><span class="n">hash</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span><span class="p">);</span>
+  
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">var</span> <span class="p">)</span>
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="n">GL_INVALID_ENUM</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">else</span> 
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="n">var</span><span class="o">-&gt;</span><span class="n">type</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="n">GLsizei</span> <span class="nf">pgProgramVariableSize</span><span class="p">(</span><span class="k">struct</span> <span class="n">PGProgramVariable</span> <span class="o">*</span><span class="n">hash</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">name</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">hash</span> <span class="o">||</span> <span class="nb">NULL</span> <span class="o">==</span> <span class="n">name</span><span class="p">)</span> <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="k">struct</span> <span class="n">PGProgramVariable</span> <span class="o">*</span><span class="n">var</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  
+  <span class="n">HASH_FIND_STR</span><span class="p">(</span><span class="n">hash</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span><span class="p">);</span>
+  
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">var</span> <span class="p">)</span>
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">else</span> 
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="n">var</span><span class="o">-&gt;</span><span class="n">size</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">destroyProgramVariablesHash</span><span class="p">(</span><span class="k">struct</span> <span class="n">PGProgramVariable</span> <span class="o">**</span><span class="n">hash_</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">!=</span> <span class="n">hash_</span><span class="p">)</span> 
+  <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">PGProgramVariable</span> <span class="o">*</span><span class="n">current</span><span class="p">,</span> <span class="o">*</span><span class="n">temp</span><span class="p">,</span> <span class="o">*</span><span class="n">hash</span> <span class="o">=</span> <span class="o">*</span><span class="n">hash_</span><span class="p">;</span>
+    <span class="n">HASH_ITER</span><span class="p">(</span><span class="n">hh</span><span class="p">,</span> <span class="n">hash</span><span class="p">,</span> <span class="n">current</span><span class="p">,</span> <span class="n">temp</span><span class="p">)</span> 
+    <span class="p">{</span>
+      <span class="n">HASH_DEL</span><span class="p">(</span><span class="n">hash</span><span class="p">,</span> <span class="n">current</span><span class="p">);</span>
+      <span class="n">free</span><span class="p">(</span><span class="n">current</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="o">*</span><span class="n">hash_</span> <span class="o">=</span> <span class="n">hash</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">extractVariables</span><span class="p">(</span><span class="n">GLuint</span> <span class="n">program</span><span class="p">,</span> <span class="k">struct</span> <span class="n">PGProgramVariable</span> <span class="o">**</span><span class="n">hash_</span><span class="p">,</span> <span class="n">GetActiveVariableFn</span> <span class="n">get</span><span class="p">,</span> <span class="n">GetVariableLocationFn</span> <span class="n">loc</span><span class="p">,</span> <span class="n">GLint</span> <span class="n">numVariables</span><span class="p">,</span> <span class="n">GLint</span> <span class="n">maxVariableLength</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">destroyProgramVariablesHash</span><span class="p">(</span><span class="n">hash_</span><span class="p">);</span>
+  
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">!=</span> <span class="n">hash_</span> <span class="o">&amp;&amp;</span> <span class="n">numVariables</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">maxVariableLength</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+  <span class="p">{</span>   
+    <span class="k">struct</span> <span class="n">PGProgramVariable</span> <span class="o">*</span><span class="n">hash</span> <span class="o">=</span> <span class="o">*</span><span class="n">hash_</span><span class="p">;</span>
+    <span class="n">assert</span><span class="p">(</span><span class="n">HASH_COUNT</span><span class="p">(</span><span class="n">hash</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="n">GLchar</span> <span class="n">name</span><span class="p">[</span><span class="n">maxVariableLength</span><span class="p">];</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">GLuint</span> <span class="n">attrIndex</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">attrIndex</span> <span class="o">&lt;</span> <span class="n">numVariables</span><span class="p">;</span> <span class="n">attrIndex</span><span class="o">++</span><span class="p">)</span>
+    <span class="p">{</span>
+      <span class="n">GLsizei</span> <span class="n">nameLength</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+      <span class="n">GLint</span> <span class="n">size</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+      <span class="n">GLenum</span> <span class="n">type</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+      
+      <span class="n">get</span><span class="p">(</span><span class="n">program</span><span class="p">,</span> <span class="n">attrIndex</span><span class="p">,</span> <span class="n">maxVariableLength</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">nameLength</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">size</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">type</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+      <span class="k">if</span> <span class="p">(</span><span class="n">nameLength</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+      <span class="p">{</span>
+        <span class="kt">size_t</span> <span class="n">recordSize</span> <span class="o">=</span> <span class="n">offsetof</span><span class="p">(</span><span class="k">struct</span> <span class="n">PGProgramVariable</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span> <span class="o">+</span> <span class="n">nameLength</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span> <span class="cm">/* nul */</span>
+        <span class="k">struct</span> <span class="n">PGProgramVariable</span> <span class="o">*</span><span class="n">var</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="n">recordSize</span><span class="p">);</span>
+        <span class="n">memset</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">recordSize</span><span class="p">);</span>
+        <span class="n">var</span><span class="o">-&gt;</span><span class="n">location</span> <span class="o">=</span> <span class="n">loc</span><span class="p">(</span><span class="n">program</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+        <span class="n">var</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">=</span> <span class="n">size</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">var</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="p">{</span>
+          <span class="n">pgLog</span><span class="p">(</span><span class="n">PGL_Warn</span><span class="p">,</span> <span class="s">&quot;%s is an array or struct. Pictogram doesn&#39;t handle those well yet - you will have to use traditional GL functions to manipulate it.&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="n">var</span><span class="o">-&gt;</span><span class="n">type</span> <span class="o">=</span> <span class="n">type</span><span class="p">;</span>
+        <span class="n">strncpy</span><span class="p">(</span><span class="n">var</span><span class="o">-&gt;</span><span class="n">name</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">nameLength</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+        <span class="n">HASH_ADD_STR</span><span class="p">(</span><span class="n">hash</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span><span class="p">);</span>
+      <span class="p">}</span>
+      <span class="k">else</span> 
+      <span class="p">{</span>
+        <span class="n">pgLogAnyGlErrors</span><span class="p">(</span><span class="s">&quot;Failed to get active program variable&quot;</span><span class="p">);</span>
+      <span class="p">}</span>
+      
+    <span class="p">}</span>
+    <span class="o">*</span><span class="n">hash_</span> <span class="o">=</span> <span class="n">hash</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">PGResult</span> <span class="nf">pgProgramCreateAndBuild</span><span class="p">(</span><span class="n">PGProgram</span> <span class="o">*</span><span class="n">program</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">vertexSource</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">fragmentSource</span><span class="p">)</span>
+<span class="p">{</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Sanitise the params /////////////////////////////////////////////////</p></div></div><div class="code"><div class="wrapper">  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">program</span><span class="p">)</span> <span class="k">return</span> <span class="n">PGR_NullPointerBarf</span><span class="p">;</span>
+  <span class="o">*</span><span class="n">program</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">vertexSource</span> <span class="o">||</span> <span class="nb">NULL</span> <span class="o">==</span> <span class="n">fragmentSource</span><span class="p">)</span> <span class="k">return</span> <span class="n">PGR_NullPointerBarf</span><span class="p">;</span>
+  </div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Create the structure to hold the details ////////////////////////////</p></div></div><div class="code"><div class="wrapper">  <span class="n">PGProgram</span> <span class="n">p</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">PGProgramPrivate</span><span class="p">));</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">p</span><span class="p">)</span> <span class="k">return</span> <span class="n">PGR_OutOfMemory</span><span class="p">;</span>
+  <span class="o">*</span><span class="n">program</span> <span class="o">=</span> <span class="n">p</span><span class="p">;</span>
+  <span class="n">memset</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">PGProgramPrivate</span><span class="p">));</span>
+  </div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Load the shaders ////////////////////////////////////////////////////</p></div></div><div class="code"><div class="wrapper">  <span class="n">pgLogAnyGlErrors</span><span class="p">(</span><span class="s">&quot;About to load shaders.&quot;</span><span class="p">);</span>
+  <span class="n">PGResult</span> <span class="n">result</span><span class="p">;</span>
+  <span class="n">result</span> <span class="o">=</span> <span class="n">pgCompileShaderFile</span><span class="p">(</span><span class="o">&amp;</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">vertexShader</span><span class="p">,</span> 
+                 <span class="n">GL_VERTEX_SHADER</span><span class="p">,</span> 
+                 <span class="n">vertexSource</span><span class="p">,</span> 
+                 <span class="o">&amp;</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">vertexShaderCompileLog</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">PGR_OK</span> <span class="o">!=</span> <span class="n">result</span><span class="p">)</span> <span class="k">return</span> <span class="n">result</span><span class="p">;</span>
+
+  <span class="n">result</span> <span class="o">=</span> <span class="n">pgCompileShaderFile</span><span class="p">(</span><span class="o">&amp;</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">fragmentShader</span><span class="p">,</span> 
+                 <span class="n">GL_FRAGMENT_SHADER</span><span class="p">,</span> 
+                 <span class="n">fragmentSource</span><span class="p">,</span> 
+                 <span class="o">&amp;</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">fragmentShaderCompileLog</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">PGR_OK</span> <span class="o">!=</span> <span class="n">result</span><span class="p">)</span> <span class="k">return</span> <span class="n">result</span><span class="p">;</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Link the program ////////////////////////////////////////////////////</p></div></div><div class="code"><div class="wrapper">    <span class="n">p</span><span class="o">-&gt;</span><span class="n">program</span> <span class="o">=</span> <span class="n">glCreateProgram</span><span class="p">();</span>
+  <span class="k">if</span> <span class="p">(</span><span class="mi">0</span> <span class="o">==</span> <span class="n">p</span><span class="o">-&gt;</span><span class="n">program</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">pgLogAnyGlErrors</span><span class="p">(</span><span class="s">&quot;Could not create new program.&quot;</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">PGR_CouldNotCreateNewProgram</span><span class="p">;</span>
+  <span class="p">}</span>
+  
+  <span class="n">result</span> <span class="o">=</span> <span class="n">pgLinkProgram</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">program</span><span class="p">,</span>
+               <span class="n">p</span><span class="o">-&gt;</span><span class="n">vertexShader</span><span class="p">,</span>
+               <span class="n">p</span><span class="o">-&gt;</span><span class="n">fragmentShader</span><span class="p">,</span>
+               <span class="o">&amp;</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">programLinkLog</span><span class="p">);</span> 
+  <span class="k">if</span> <span class="p">(</span><span class="n">PGR_OK</span> <span class="o">!=</span> <span class="n">result</span><span class="p">)</span> <span class="k">return</span> <span class="n">result</span><span class="p">;</span>
+  </div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Fetch the attributes ////////////////////////////////////////////////</p></div></div><div class="code"><div class="wrapper">  <span class="n">GLint</span> <span class="n">numVars</span><span class="p">;</span>
+  <span class="n">GLint</span> <span class="n">varNameMax</span><span class="p">;</span>
+  
+  <span class="n">glGetProgramiv</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">program</span><span class="p">,</span> <span class="n">GL_ACTIVE_ATTRIBUTES</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">numVars</span><span class="p">);</span>
+  <span class="n">glGetProgramiv</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">program</span><span class="p">,</span> <span class="n">GL_ACTIVE_ATTRIBUTE_MAX_LENGTH</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">varNameMax</span><span class="p">);</span>
+  <span class="n">extractVariables</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">program</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">attributesHash</span><span class="p">,</span> <span class="n">glGetActiveAttrib</span><span class="p">,</span> <span class="n">glGetAttribLocation</span><span class="p">,</span> <span class="n">numVars</span><span class="p">,</span> <span class="n">varNameMax</span><span class="p">);</span>
+  
+  <span class="n">glGetProgramiv</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">program</span><span class="p">,</span> <span class="n">GL_ACTIVE_UNIFORMS</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">numVars</span><span class="p">);</span>
+  <span class="n">glGetProgramiv</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">program</span><span class="p">,</span> <span class="n">GL_ACTIVE_UNIFORM_MAX_LENGTH</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">varNameMax</span><span class="p">);</span>
+  <span class="n">extractVariables</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">program</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">uniformsHash</span><span class="p">,</span> <span class="n">glGetActiveUniform</span><span class="p">,</span> <span class="n">glGetUniformLocation</span><span class="p">,</span> <span class="n">numVars</span><span class="p">,</span> <span class="n">varNameMax</span><span class="p">);</span>
+  
+  <span class="k">return</span> <span class="n">PGR_OK</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">pgProgramDestroy</span><span class="p">(</span><span class="n">PGProgram</span> <span class="o">*</span><span class="n">program</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">!=</span> <span class="n">program</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">PGProgram</span> <span class="n">p</span> <span class="o">=</span> <span class="o">*</span><span class="n">program</span><span class="p">;</span>
+    </div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Free the shaders and program ////////////////////////////////////</p></div></div><div class="code"><div class="wrapper">    <span class="k">if</span> <span class="p">(</span><span class="mi">0</span> <span class="o">!=</span> <span class="n">p</span><span class="o">-&gt;</span><span class="n">vertexShader</span><span class="p">)</span> <span class="n">glDeleteShader</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">vertexShader</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="mi">0</span> <span class="o">!=</span> <span class="n">p</span><span class="o">-&gt;</span><span class="n">fragmentShader</span><span class="p">)</span> <span class="n">glDeleteShader</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">fragmentShader</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="mi">0</span> <span class="o">!=</span> <span class="n">p</span><span class="o">-&gt;</span><span class="n">program</span><span class="p">)</span>
+    <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="mi">0</span> <span class="o">!=</span> <span class="n">p</span><span class="o">-&gt;</span><span class="n">vertexShader</span><span class="p">)</span> <span class="n">glDetachShader</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">program</span><span class="p">,</span> <span class="n">p</span><span class="o">-&gt;</span><span class="n">vertexShader</span><span class="p">);</span>
+      <span class="k">if</span> <span class="p">(</span><span class="mi">0</span> <span class="o">!=</span> <span class="n">p</span><span class="o">-&gt;</span><span class="n">fragmentShader</span><span class="p">)</span> <span class="n">glDetachShader</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">program</span><span class="p">,</span> <span class="n">p</span><span class="o">-&gt;</span><span class="n">fragmentShader</span><span class="p">);</span>
+      <span class="n">glDeleteProgram</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">program</span><span class="p">);</span>
+    <span class="p">}</span>
+    </div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Free the logs</p></div></div><div class="code"><div class="wrapper">    <span class="n">free</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">programLinkLog</span><span class="p">);</span>
+    <span class="n">free</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">vertexShaderCompileLog</span><span class="p">);</span>
+    <span class="n">free</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">fragmentShaderCompileLog</span><span class="p">);</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Free the program variables hash /////////////////////////////////</p></div></div><div class="code"><div class="wrapper">    <span class="n">destroyProgramVariablesHash</span><span class="p">(</span><span class="o">&amp;</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">attributesHash</span><span class="p">);</span>
+    <span class="n">assert</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">attributesHash</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">);</span>
+
+    <span class="n">destroyProgramVariablesHash</span><span class="p">(</span><span class="o">&amp;</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">uniformsHash</span><span class="p">);</span>
+    <span class="n">assert</span><span class="p">(</span><span class="n">p</span><span class="o">-&gt;</span><span class="n">uniformsHash</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">);</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Free the PGProgram //////////////////////////////////////////////</p></div></div><div class="code"><div class="wrapper">    <span class="n">memset</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">PGProgramPrivate</span><span class="p">));</span>
+    <span class="n">free</span><span class="p">(</span><span class="n">p</span><span class="p">);</span>
+    
+    <span class="o">*</span><span class="n">program</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">GLuint</span> <span class="nf">pgProgramVertexShader</span><span class="p">(</span><span class="n">PGProgram</span> <span class="n">program</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">program</span><span class="p">)</span> <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+  
+  <span class="k">return</span> <span class="n">program</span><span class="o">-&gt;</span><span class="n">vertexShader</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="n">GLuint</span> <span class="nf">pgProgramFragmentShader</span><span class="p">(</span><span class="n">PGProgram</span> <span class="n">program</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">program</span><span class="p">)</span> <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+  
+  <span class="k">return</span> <span class="n">program</span><span class="o">-&gt;</span><span class="n">fragmentShader</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">const</span> <span class="n">GLchar</span><span class="o">*</span> <span class="nf">pgProgramVertexShaderCompileLog</span><span class="p">(</span><span class="n">PGProgram</span> <span class="n">program</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">program</span> <span class="o">||</span> <span class="nb">NULL</span> <span class="o">==</span> <span class="n">program</span><span class="o">-&gt;</span><span class="n">vertexShaderCompileLog</span><span class="p">)</span> <span class="k">return</span> <span class="s">&quot;&quot;</span><span class="p">;</span>
+  
+  <span class="k">return</span> <span class="n">program</span><span class="o">-&gt;</span><span class="n">vertexShaderCompileLog</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">const</span> <span class="n">GLchar</span><span class="o">*</span> <span class="nf">pgProgramFragmentShaderCompileLog</span><span class="p">(</span><span class="n">PGProgram</span> <span class="n">program</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">program</span> <span class="o">||</span> <span class="nb">NULL</span> <span class="o">==</span> <span class="n">program</span><span class="o">-&gt;</span><span class="n">fragmentShaderCompileLog</span><span class="p">)</span> <span class="k">return</span> <span class="s">&quot;&quot;</span><span class="p">;</span>
+
+  <span class="k">return</span> <span class="n">program</span><span class="o">-&gt;</span><span class="n">fragmentShaderCompileLog</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">const</span> <span class="n">GLchar</span><span class="o">*</span> <span class="nf">pgProgramLinkLog</span><span class="p">(</span><span class="n">PGProgram</span> <span class="n">program</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">program</span> <span class="o">||</span> <span class="nb">NULL</span> <span class="o">==</span> <span class="n">program</span><span class="o">-&gt;</span><span class="n">programLinkLog</span><span class="p">)</span> <span class="k">return</span> <span class="s">&quot;&quot;</span><span class="p">;</span>
+  
+  <span class="k">return</span> <span class="n">program</span><span class="o">-&gt;</span><span class="n">programLinkLog</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="n">GLint</span> <span class="nf">pgProgramAttribCount</span><span class="p">(</span><span class="n">PGProgram</span> <span class="n">program</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">program</span><span class="p">)</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+  
+  <span class="k">return</span> <span class="n">HASH_COUNT</span><span class="p">(</span><span class="n">program</span><span class="o">-&gt;</span><span class="n">attributesHash</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="n">GLint</span> <span class="nf">pgProgramAttribLocation</span><span class="p">(</span><span class="n">PGProgram</span> <span class="n">program</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">name</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">program</span><span class="p">)</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+  
+  <span class="k">return</span> <span class="n">pgProgramVariableLocation</span><span class="p">(</span><span class="n">program</span><span class="o">-&gt;</span><span class="n">attributesHash</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="n">GLenum</span> <span class="nf">pgProgramAttribType</span><span class="p">(</span><span class="n">PGProgram</span> <span class="n">program</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">name</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">program</span><span class="p">)</span> <span class="k">return</span> <span class="n">GL_INVALID_ENUM</span><span class="p">;</span>
+  
+  <span class="k">return</span> <span class="n">pgProgramVariableType</span><span class="p">(</span><span class="n">program</span><span class="o">-&gt;</span><span class="n">attributesHash</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="n">GLsizei</span> <span class="nf">pgProgramAttribSize</span><span class="p">(</span><span class="n">PGProgram</span> <span class="n">program</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">name</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">program</span><span class="p">)</span> <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+  
+  <span class="k">return</span> <span class="n">pgProgramVariableSize</span><span class="p">(</span><span class="n">program</span><span class="o">-&gt;</span><span class="n">attributesHash</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="n">GLint</span> <span class="nf">pgProgramUniformCount</span><span class="p">(</span><span class="n">PGProgram</span> <span class="n">program</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">program</span><span class="p">)</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+  
+  <span class="k">return</span> <span class="n">HASH_COUNT</span><span class="p">(</span><span class="n">program</span><span class="o">-&gt;</span><span class="n">uniformsHash</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="n">GLint</span> <span class="nf">pgProgramUniformLocation</span><span class="p">(</span><span class="n">PGProgram</span> <span class="n">program</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">name</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">program</span><span class="p">)</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+  
+  <span class="k">return</span> <span class="n">pgProgramVariableLocation</span><span class="p">(</span><span class="n">program</span><span class="o">-&gt;</span><span class="n">uniformsHash</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="n">GLenum</span> <span class="nf">pgProgramUniformType</span><span class="p">(</span><span class="n">PGProgram</span> <span class="n">program</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">name</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">program</span><span class="p">)</span> <span class="k">return</span> <span class="n">GL_INVALID_ENUM</span><span class="p">;</span>
+  
+  <span class="k">return</span> <span class="n">pgProgramVariableType</span><span class="p">(</span><span class="n">program</span><span class="o">-&gt;</span><span class="n">uniformsHash</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="n">GLsizei</span> <span class="nf">pgProgramUniformSize</span><span class="p">(</span><span class="n">PGProgram</span> <span class="n">program</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">name</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">program</span><span class="p">)</span> <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+  
+  <span class="k">return</span> <span class="n">pgProgramVariableSize</span><span class="p">(</span><span class="n">program</span><span class="o">-&gt;</span><span class="n">uniformsHash</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+<span class="p">}</span></div></div></div></div></body></html>
