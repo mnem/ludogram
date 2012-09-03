@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include "Pictogram.h"
+#include "Ludogram.h"
 
 #define UNKNOWN (1)
 struct PGProgramVariable {
@@ -90,11 +91,10 @@ static PGResult pgCompileShaderString(GLuint *outShader, GLenum type, const char
 
 static PGResult pgCompileShaderFile(GLuint *outShader, GLenum type, const char *file, GLchar **outLog)
 {
-	char *source = NULL;
-	if(PGR_OK != pgCreateStringFromFile(&source, file))
+	char *source = LGFileToString(file, NULL);
+	if(!source)
 	{
 		pgLog(PGL_Error, "Could not load shader file %s", file);
-		free(source);
 		return PGR_CouldNotReadFile;
 	}
 	
