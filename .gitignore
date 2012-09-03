@@ -1,3 +1,14 @@
+# Ignore the docs directory as the
+# real version exists in the gh-pages
+# branch
+doc/
+
+# A smorgasbord of ignored things
+# grabbed and sorted from various
+# .gitignore files at:
+#
+#   https://github.com/github/gitignore
+#
 !default.mode1v3
 !default.mode2v3
 !default.pbxuser

@@ -1,0 +1,98 @@
+<!DOCTYPE html><html lang="en"><head><title>src/LGFile</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="src/LGFile"><meta name="groc-project-path" content="core/src/LGFile.c"><meta name="groc-github-url" content="https://github.com/mnem/mnem"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path"><a href="https://github.com/mnem/mnem/blob/master/core/src/LGFile.c">core/src/LGFile.c</a></div></div><div id="document"><div class="segment"><div class="comments"><div class="wrapper"><h1 id="lgfile">LGFile</h1>
+
+<p>Collection of simple cross platform file utilities used throughout
+<a href="https://github.com/mnem/ludogram/">Ludogram</a>.</p>
+
+<hr />
+
+<p>(c) Copyright 2012 David Wagner.</p>
+
+<p>Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:</p>
+
+<p>The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.</p>
+
+<p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.</p>
+
+<hr /></div></div><div class="code"><div class="wrapper"><span class="cp">#include &lt;stdio.h&gt;</span>
+<span class="cp">#include &lt;memory.h&gt;</span>
+<span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;sys/stat.h&gt;</span>
+<span class="cp">#include &lt;errno.h&gt;</span>
+
+<span class="cp">#include &quot;PGLog.h&quot;</span>
+
+<span class="cp">#define SAFE_DEREF_AND_STORE(n, m) if (n) *(n) = (m)</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgfiletostring">LGFileToString</h2>
+
+<p>Reads the contents of <code>path</code> and stores in a newly <code>malloc</code>d string. It
+assumes that the passed path is suitable for use with <code>stdio.h</code> functions.</p>
+
+<p>If <code>stdioErrno</code> is not <code>NULL</code> it will be used to store the <code>errno</code> for
+any failure.</p>
+
+<h5 id="note">NOTE:</h5>
+
+<p>You must <code>free</code> the returned string when you are finished with it.</p></div></div><div class="code"><div class="wrapper"><span class="kt">char</span><span class="o">*</span> <span class="nf">LGFileToString</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">path</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">stdioErrno</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">SAFE_DEREF_AND_STORE</span><span class="p">(</span><span class="n">stdioErrno</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+  
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">path</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">SAFE_DEREF_AND_STORE</span><span class="p">(</span><span class="n">stdioErrno</span><span class="p">,</span> <span class="n">EINVAL</span><span class="p">);</span>
+    <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="p">}</span>
+  
+  <span class="k">struct</span> <span class="n">stat</span> <span class="n">status</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">0</span> <span class="p">};</span>
+  <span class="k">if</span> <span class="p">(</span><span class="mi">0</span> <span class="o">!=</span> <span class="n">stat</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">status</span><span class="p">))</span>
+  <span class="p">{</span>
+    <span class="n">SAFE_DEREF_AND_STORE</span><span class="p">(</span><span class="n">stdioErrno</span><span class="p">,</span> <span class="n">errno</span><span class="p">);</span>
+    <span class="n">pgLog</span><span class="p">(</span><span class="n">PGL_Error</span><span class="p">,</span> <span class="s">&quot;Could not get status for %s: %s&quot;</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">strerror</span><span class="p">(</span><span class="n">errno</span><span class="p">));</span>
+    <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="p">}</span>
+  
+  <span class="kt">FILE</span> <span class="o">*</span><span class="n">filePointer</span> <span class="o">=</span> <span class="n">fopen</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s">&quot;r&quot;</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">filePointer</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">SAFE_DEREF_AND_STORE</span><span class="p">(</span><span class="n">stdioErrno</span><span class="p">,</span> <span class="n">errno</span><span class="p">);</span>
+    <span class="n">pgLog</span><span class="p">(</span><span class="n">PGL_Error</span><span class="p">,</span> <span class="s">&quot;Could not open %s: %s&quot;</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">strerror</span><span class="p">(</span><span class="n">errno</span><span class="p">));</span>
+    <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="kt">char</span> <span class="o">*</span><span class="n">string</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span><span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="n">status</span><span class="p">.</span><span class="n">st_size</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">string</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">SAFE_DEREF_AND_STORE</span><span class="p">(</span><span class="n">stdioErrno</span><span class="p">,</span> <span class="n">ENOMEM</span><span class="p">);</span>
+    <span class="n">pgLog</span><span class="p">(</span><span class="n">PGL_Error</span><span class="p">,</span> <span class="s">&quot;Could not allocate buffer to read %s. Need %dz bytes free.&quot;</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="p">(</span><span class="n">status</span><span class="p">.</span><span class="n">st_size</span> <span class="o">+</span> <span class="mi">1</span><span class="p">));</span>
+    <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="p">}</span>
+  
+  <span class="kt">size_t</span> <span class="n">read</span> <span class="o">=</span> <span class="n">fread</span><span class="p">(</span><span class="n">string</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">status</span><span class="p">.</span><span class="n">st_size</span><span class="p">,</span> <span class="n">filePointer</span><span class="p">);</span>
+  <span class="kt">int</span> <span class="n">closeErr</span> <span class="o">=</span> <span class="n">fclose</span><span class="p">(</span><span class="n">filePointer</span><span class="p">);</span>
+  <span class="n">string</span><span class="p">[</span><span class="n">read</span><span class="p">]</span> <span class="o">=</span> <span class="sc">&#39;\0&#39;</span><span class="p">;</span>
+  </div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h5 id="note">NOTE:</h5>
+
+<p>Treats read errors as warnings and returns the buffer containing
+what was read. This may not be the best thing to do.</p></div></div><div class="code"><div class="wrapper">  <span class="k">if</span> <span class="p">(</span><span class="n">read</span> <span class="o">!=</span> <span class="n">status</span><span class="p">.</span><span class="n">st_size</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">SAFE_DEREF_AND_STORE</span><span class="p">(</span><span class="n">stdioErrno</span><span class="p">,</span> <span class="n">EIO</span><span class="p">);</span>
+    <span class="n">pgLog</span><span class="p">(</span><span class="n">PGL_Warn</span><span class="p">,</span> <span class="s">&quot;Did not read all bytes in %s. Expected to read %dz, but read %dz&quot;</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">read</span><span class="p">,</span> <span class="n">status</span><span class="p">.</span><span class="n">st_size</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">EOF</span> <span class="o">==</span> <span class="n">closeErr</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">SAFE_DEREF_AND_STORE</span><span class="p">(</span><span class="n">stdioErrno</span><span class="p">,</span> <span class="n">errno</span><span class="p">);</span>
+    <span class="n">pgLog</span><span class="p">(</span><span class="n">PGL_Warn</span><span class="p">,</span> <span class="s">&quot;Failed to close %s: %s&quot;</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">strerror</span><span class="p">(</span><span class="n">errno</span><span class="p">));</span>
+  <span class="p">}</span>
+  
+  <span class="k">return</span> <span class="n">string</span><span class="p">;</span>
+<span class="p">}</span></div></div></div></div></body></html>

@@ -4,6 +4,7 @@
  Copyright (c) 2012 Noise &amp; Heat. All rights reserved.</p></div></div><div class="code"><div class="wrapper"><span class="cp">#include &lt;stdlib.h&gt;</span>
 <span class="cp">#include &lt;assert.h&gt;</span>
 <span class="cp">#include &quot;Pictogram.h&quot;</span>
+<span class="cp">#include &quot;Ludogram.h&quot;</span>
 
 <span class="cp">#define UNKNOWN (1)</span>
 <span class="k">struct</span> <span class="n">PGProgramVariable</span> <span class="p">{</span>
@@ -86,11 +87,10 @@
 
 <span class="k">static</span> <span class="n">PGResult</span> <span class="nf">pgCompileShaderFile</span><span class="p">(</span><span class="n">GLuint</span> <span class="o">*</span><span class="n">outShader</span><span class="p">,</span> <span class="n">GLenum</span> <span class="n">type</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">file</span><span class="p">,</span> <span class="n">GLchar</span> <span class="o">**</span><span class="n">outLog</span><span class="p">)</span>
 <span class="p">{</span>
-  <span class="kt">char</span> <span class="o">*</span><span class="n">source</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-  <span class="k">if</span><span class="p">(</span><span class="n">PGR_OK</span> <span class="o">!=</span> <span class="n">pgCreateStringFromFile</span><span class="p">(</span><span class="o">&amp;</span><span class="n">source</span><span class="p">,</span> <span class="n">file</span><span class="p">))</span>
+  <span class="kt">char</span> <span class="o">*</span><span class="n">source</span> <span class="o">=</span> <span class="n">LGFileToString</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+  <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">source</span><span class="p">)</span>
   <span class="p">{</span>
     <span class="n">pgLog</span><span class="p">(</span><span class="n">PGL_Error</span><span class="p">,</span> <span class="s">&quot;Could not load shader file %s&quot;</span><span class="p">,</span> <span class="n">file</span><span class="p">);</span>
-    <span class="n">free</span><span class="p">(</span><span class="n">source</span><span class="p">);</span>
     <span class="k">return</span> <span class="n">PGR_CouldNotReadFile</span><span class="p">;</span>
   <span class="p">}</span>
   
