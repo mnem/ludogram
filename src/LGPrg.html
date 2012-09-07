@@ -1,0 +1,501 @@
+<!DOCTYPE html><html lang="en"><head><title>src/LGPrg</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="src/LGPrg"><meta name="groc-project-path" content="core/src/LGPrg.c"><meta name="groc-github-url" content="https://github.com/mnem/mnem"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path"><a href="https://github.com/mnem/mnem/blob/master/core/src/LGPrg.c">core/src/LGPrg.c</a></div></div><div id="document"><div class="segment"><div class="comments"><div class="wrapper"><h1 id="lgopenglprogram">LGOpenGLProgram</h1>
+
+<p>Various methods to create and manipulate OpenGL shader programs.
+Currently, only programs using vertex and fragment shaders are
+supported, because they work across mobile and desktop.</p>
+
+<p>In general, you don't have to use these functions unless you want to get
+into the internals of how Ludogram works. For more information on
+shaders, here are a few resources:</p>
+
+<ul>
+<li><a href="http://www.lighthouse3d.com/tutorials/glsl-tutorial/">GLSL 1.2 Tutorial</a></li>
+<li><a href="http://www.amazon.co.uk/gp/product/1568814348?ie=UTF8&amp;camp=3194&amp;creative=21330&amp;creativeASIN=1568814348&amp;linkCode=shr&amp;tag=nohe-21&amp;ref_=dp_ob_title_bk">Check out Graphics Shaders: Theory and Practice, Second Edition by Mike Bailey</a></li>
+<li><a href="http://gamedev.stackexchange.com/questions/tagged/shaders">Shaders tag at gamedev.stackexchange</a></li>
+</ul>
+
+<hr />
+
+<p>(c) Copyright 2012 David Wagner.</p>
+
+<p>Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:</p>
+
+<p>The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.</p>
+
+<p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.</p>
+
+<hr /></div></div><div class="code"><div class="wrapper"><span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;assert.h&gt;</span>
+<span class="cp">#include &lt;stdio.h&gt;</span>
+<span class="cp">#include &lt;stdarg.h&gt;</span>
+
+<span class="cp">#include &quot;Ludogram.h&quot;</span>
+
+
+<span class="cp">#pragma mark - GL Logging</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="-lgvlogglerrors">_LGvLogGLErrors</h2>
+
+<p>Checks for any GL errors and prints any to stdout, along
+with the passed message</p></div></div><div class="code"><div class="wrapper"><span class="n">GLenum</span> <span class="nf">_LGvLogGLErrors</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">fmt</span><span class="p">,</span> <span class="p">...)</span>
+<span class="p">{</span>
+  <span class="n">GLenum</span> <span class="n">error</span> <span class="o">=</span> <span class="n">glGetError</span><span class="p">();</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">GL_NO_ERROR</span> <span class="o">!=</span> <span class="n">error</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="kt">va_list</span> <span class="n">ap</span><span class="p">;</span>
+    <span class="n">va_start</span><span class="p">(</span><span class="n">ap</span><span class="p">,</span> <span class="n">fmt</span><span class="p">);</span>
+    <span class="n">vprintf</span><span class="p">(</span><span class="n">fmt</span><span class="p">,</span> <span class="n">ap</span><span class="p">);</span>
+    <span class="n">va_end</span><span class="p">(</span><span class="n">ap</span><span class="p">);</span>
+    
+    <span class="k">switch</span> <span class="p">(</span><span class="n">error</span><span class="p">)</span>
+    <span class="p">{</span>
+      <span class="k">case</span> <span class="n">GL_INVALID_ENUM</span>:
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot; - Invalid enum.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+        <span class="k">break</span><span class="p">;</span>
+      <span class="k">case</span> <span class="n">GL_INVALID_VALUE</span>:
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot; - Invalid value.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+        <span class="k">break</span><span class="p">;</span>
+      <span class="k">case</span> <span class="n">GL_INVALID_OPERATION</span>:
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot; - Invalid operation.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+        <span class="k">break</span><span class="p">;</span>
+      <span class="k">case</span> <span class="n">GL_OUT_OF_MEMORY</span>:
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot; - Out of memory.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+        <span class="k">break</span><span class="p">;</span>
+        
+      <span class="nl">default:</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&quot; - Unrecognised gl error code: %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">);</span>
+        <span class="k">break</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  
+  <span class="k">return</span> <span class="n">error</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="cp">#pragma mark - LGPrgVar</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h1 id="lgprgvar-methods">LGPrgVar methods</h1></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprgvarnew">LGPrgVarNew</h2>
+
+<p>Creates and initialises a new LGPrgVar. Takes a copy of the passed
+name string.</p></div></div><div class="code"><div class="wrapper"><span class="n">LGPrgVar</span> <span class="o">*</span> <span class="nf">LGPrgVarNew</span><span class="p">(</span><span class="n">GLint</span> <span class="n">location</span><span class="p">,</span> <span class="n">GLint</span> <span class="n">size</span><span class="p">,</span> <span class="n">GLenum</span> <span class="n">type</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">name</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">size_t</span> <span class="n">nameLength</span> <span class="o">=</span> <span class="n">name</span> <span class="o">?</span> <span class="n">strlen</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="o">:</span> <span class="mi">0</span><span class="p">;</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Work out the real size we need to allocate for the struct, including
+the name string. By keeping it as a contiguous block like this,
+hashing is simpler.</p></div></div><div class="code"><div class="wrapper">  <span class="kt">size_t</span> <span class="n">recordSize</span> <span class="o">=</span> <span class="n">offsetof</span><span class="p">(</span><span class="n">LGPrgVar</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span> <span class="o">+</span> <span class="n">nameLength</span> <span class="o">+</span> <span class="mi">1</span><span class="cm">/* NUL */</span><span class="p">;</span>
+
+  <span class="n">LGPrgVar</span> <span class="o">*</span> <span class="n">o</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="n">recordSize</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">o</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">memset</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">recordSize</span><span class="p">);</span>
+
+    <span class="n">o</span><span class="o">-&gt;</span><span class="n">location</span> <span class="o">=</span> <span class="n">location</span><span class="p">;</span>
+    <span class="n">o</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">=</span> <span class="n">size</span><span class="p">;</span>
+    <span class="n">o</span><span class="o">-&gt;</span><span class="n">type</span> <span class="o">=</span> <span class="n">type</span><span class="p">;</span>
+    </div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>As we've zeroed the memory already, we
+don't have to worry about adding a NUL
+terminator.</p></div></div><div class="code"><div class="wrapper">    <span class="n">strncpy</span><span class="p">(</span><span class="n">o</span><span class="o">-&gt;</span><span class="n">name</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">nameLength</span><span class="p">);</span>
+  <span class="p">}</span>
+  
+  <span class="k">return</span> <span class="n">o</span><span class="p">;</span>
+<span class="p">}</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprgvardelete">LGPrgVarDelete</h2>
+
+<p>Releases the LGPrgVar object.</p></div></div><div class="code"><div class="wrapper"><span class="kt">void</span> <span class="nf">LGPrgVarDelete</span><span class="p">(</span><span class="n">LGPrgVar</span> <span class="o">**</span> <span class="n">o_</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">o_</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">LGPrgVar</span> <span class="o">*</span><span class="n">o</span> <span class="o">=</span> <span class="o">*</span><span class="n">o_</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">o</span><span class="p">)</span>
+    <span class="p">{</span>
+      <span class="kt">size_t</span> <span class="n">nameLength</span> <span class="o">=</span> <span class="n">strlen</span><span class="p">(</span><span class="n">o</span><span class="o">-&gt;</span><span class="n">name</span><span class="p">);</span>
+      <span class="kt">size_t</span> <span class="n">recordSize</span> <span class="o">=</span> <span class="n">offsetof</span><span class="p">(</span><span class="n">LGPrgVar</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span> <span class="o">+</span> <span class="n">nameLength</span> <span class="o">+</span> <span class="mi">1</span><span class="cm">/* NUL */</span><span class="p">;</span>
+      <span class="n">memset</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">recordSize</span><span class="p">);</span>
+      <span class="n">free</span><span class="p">(</span><span class="n">o</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="o">*</span><span class="n">o_</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprgvarhashclear">LGPrgVarHashClear</h2>
+
+<p>Deletes the contents of the hash and sets it to NULL.</p></div></div><div class="code"><div class="wrapper"><span class="kt">void</span> <span class="nf">LGPrgVarHashClear</span><span class="p">(</span><span class="n">LGPrgVar</span> <span class="o">**</span><span class="n">hash_</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">!=</span> <span class="n">hash_</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">LGPrgVar</span> <span class="o">*</span><span class="n">current</span><span class="p">;</span>
+    <span class="n">LGPrgVar</span> <span class="o">*</span><span class="n">temp</span><span class="p">;</span>
+    <span class="n">LGPrgVar</span> <span class="o">*</span><span class="n">hash</span> <span class="o">=</span> <span class="o">*</span><span class="n">hash_</span><span class="p">;</span>
+    <span class="n">HASH_ITER</span><span class="p">(</span><span class="n">hh</span><span class="p">,</span> <span class="n">hash</span><span class="p">,</span> <span class="n">current</span><span class="p">,</span> <span class="n">temp</span><span class="p">)</span>
+    <span class="p">{</span>
+      <span class="n">HASH_DEL</span><span class="p">(</span><span class="n">hash</span><span class="p">,</span> <span class="n">current</span><span class="p">);</span>
+      <span class="n">LGPrgVarDelete</span><span class="p">(</span><span class="o">&amp;</span><span class="n">current</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="o">*</span><span class="n">hash_</span> <span class="o">=</span> <span class="n">hash</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprgvarhashofactivevariables">LGPrgVarHashOfActiveVariables</h2>
+
+<p>Using the supplied query, creates a new LGPrgVar hash of all the
+active variables in the specified program</p></div></div><div class="code"><div class="wrapper"><span class="n">LGPrgVar</span> <span class="o">*</span> <span class="nf">LGPrgVarHashOfActiveVariables</span><span class="p">(</span><span class="n">GLuint</span> <span class="n">program</span><span class="p">,</span> <span class="k">const</span> <span class="n">LGActiveVarQuery</span> <span class="o">*</span><span class="n">query</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">LGPrgVar</span> <span class="o">*</span> <span class="n">hash</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="n">GLint</span> <span class="n">numVars</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="n">GLint</span> <span class="n">varNameMax</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  
+  <span class="n">glGetProgramiv</span><span class="p">(</span><span class="n">program</span><span class="p">,</span> <span class="n">query</span><span class="o">-&gt;</span><span class="n">queryType</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">numVars</span><span class="p">);</span>
+  <span class="n">glGetProgramiv</span><span class="p">(</span><span class="n">program</span><span class="p">,</span> <span class="n">query</span><span class="o">-&gt;</span><span class="n">queryTypeNameLength</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">varNameMax</span><span class="p">);</span>
+  
+  <span class="n">GLchar</span> <span class="n">name</span><span class="p">[</span><span class="n">varNameMax</span><span class="p">];</span>
+  <span class="k">for</span> <span class="p">(</span><span class="n">GLuint</span> <span class="n">attrIndex</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">attrIndex</span> <span class="o">&lt;</span> <span class="n">numVars</span><span class="p">;</span> <span class="n">attrIndex</span><span class="o">++</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">GLsizei</span> <span class="n">nameLength</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">GLint</span> <span class="n">size</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">GLenum</span> <span class="n">type</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    
+    <span class="n">query</span><span class="o">-&gt;</span><span class="n">getActiveVariable</span><span class="p">(</span><span class="n">program</span><span class="p">,</span> <span class="n">attrIndex</span><span class="p">,</span> <span class="n">varNameMax</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">nameLength</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">size</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">type</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+    
+    <span class="n">GLint</span> <span class="n">location</span> <span class="o">=</span> <span class="n">query</span><span class="o">-&gt;</span><span class="n">getVariableLocation</span><span class="p">(</span><span class="n">program</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+    
+    <span class="n">LGPrgVar</span> <span class="o">*</span> <span class="n">var</span> <span class="o">=</span> <span class="n">LGPrgVarNew</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">type</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">var</span><span class="p">)</span>
+    <span class="p">{</span>
+      <span class="n">HASH_ADD_STR</span><span class="p">(</span><span class="n">hash</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">else</span>
+    <span class="p">{</span>
+      <span class="n">LGLogOOM</span><span class="p">(</span><span class="s">&quot;Out of memory creating LGPrgVar in LGPrgVarHashOfActiveVariables&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  
+  <span class="k">return</span> <span class="n">hash</span><span class="p">;</span>
+<span class="p">}</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprgvarhashofactiveattributes">LGPrgVarHashOfActiveAttributes</h2>
+
+<p>Re-parses the program for active attributes, storing their locations
+in the newly created hash.</p></div></div><div class="code"><div class="wrapper"><span class="n">LGPrgVar</span> <span class="o">*</span> <span class="nf">LGPrgVarHashOfActiveAttributes</span><span class="p">(</span><span class="n">GLuint</span> <span class="n">program</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">LGActiveVarQuery</span> <span class="n">query</span><span class="p">;</span>
+  
+  <span class="n">query</span><span class="p">.</span><span class="n">queryType</span> <span class="o">=</span> <span class="n">GL_ACTIVE_ATTRIBUTES</span><span class="p">;</span>
+  <span class="n">query</span><span class="p">.</span><span class="n">queryTypeNameLength</span> <span class="o">=</span> <span class="n">GL_ACTIVE_ATTRIBUTE_MAX_LENGTH</span><span class="p">;</span>
+  <span class="n">query</span><span class="p">.</span><span class="n">getActiveVariable</span> <span class="o">=</span> <span class="n">glGetActiveAttrib</span><span class="p">;</span>
+  <span class="n">query</span><span class="p">.</span><span class="n">getVariableLocation</span> <span class="o">=</span> <span class="n">glGetAttribLocation</span><span class="p">;</span>
+  
+  <span class="k">return</span> <span class="n">LGPrgVarHashOfActiveVariables</span><span class="p">(</span><span class="n">program</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">query</span><span class="p">);</span>
+<span class="p">}</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprgvarhashofactiveuniforms">LGPrgVarHashOfActiveUniforms</h2>
+
+<p>Re-parses the program for active uniforms, storing their locations
+in the newly created hash.</p></div></div><div class="code"><div class="wrapper"><span class="n">LGPrgVar</span> <span class="o">*</span> <span class="nf">LGPrgVarHashOfActiveUniforms</span><span class="p">(</span><span class="n">GLuint</span> <span class="n">program</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">LGActiveVarQuery</span> <span class="n">query</span><span class="p">;</span>
+  
+  <span class="n">query</span><span class="p">.</span><span class="n">queryType</span> <span class="o">=</span> <span class="n">GL_ACTIVE_UNIFORMS</span><span class="p">;</span>
+  <span class="n">query</span><span class="p">.</span><span class="n">queryTypeNameLength</span> <span class="o">=</span> <span class="n">GL_ACTIVE_UNIFORM_MAX_LENGTH</span><span class="p">;</span>
+  <span class="n">query</span><span class="p">.</span><span class="n">getActiveVariable</span> <span class="o">=</span> <span class="n">glGetActiveUniform</span><span class="p">;</span>
+  <span class="n">query</span><span class="p">.</span><span class="n">getVariableLocation</span> <span class="o">=</span> <span class="n">glGetUniformLocation</span><span class="p">;</span>
+  
+  <span class="k">return</span> <span class="n">LGPrgVarHashOfActiveVariables</span><span class="p">(</span><span class="n">program</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">query</span><span class="p">);</span>
+<span class="p">}</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprgvarlocation">LGPrgVarLocation</h2>
+
+<p>Returns the location for the named variable. If the
+name is not found, returns -1.</p></div></div><div class="code"><div class="wrapper"><span class="n">GLuint</span> <span class="nf">LGPrgVarLocation</span><span class="p">(</span><span class="k">const</span> <span class="n">LGPrgVar</span> <span class="o">*</span><span class="n">hash</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">LGPrgVar</span> <span class="o">*</span><span class="n">var</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  
+  <span class="n">HASH_FIND_STR</span><span class="p">(</span><span class="n">hash</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span><span class="p">);</span>
+  
+  <span class="k">if</span> <span class="p">(</span><span class="nb">NULL</span> <span class="o">==</span> <span class="n">var</span> <span class="p">)</span>
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">else</span>
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="n">var</span><span class="o">-&gt;</span><span class="n">location</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+
+<span class="cp">#pragma mark - LGPrgObject</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h1 id="lgprgobject-methods">LGPrgObject methods</h1></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprgobjectinit">LGPrgObjectInit</h2>
+
+<p>Initialises a new LGPrgObject. Takes ownership of log, which
+will be freed when deleted.</p></div></div><div class="code"><div class="wrapper"><span class="kt">void</span> <span class="nf">LGPrgObjectInit</span><span class="p">(</span><span class="n">LGPrgObject</span> <span class="o">*</span> <span class="n">o</span><span class="p">,</span> <span class="n">GLuint</span> <span class="n">reference</span><span class="p">,</span> <span class="n">GLboolean</span> <span class="n">valid</span><span class="p">,</span> <span class="n">GLchar</span> <span class="o">*</span> <span class="n">log</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">o</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">o</span><span class="o">-&gt;</span><span class="n">reference</span> <span class="o">=</span> <span class="n">reference</span><span class="p">;</span>
+    <span class="n">o</span><span class="o">-&gt;</span><span class="n">valid</span> <span class="o">=</span> <span class="n">valid</span><span class="p">;</span>
+    <span class="n">o</span><span class="o">-&gt;</span><span class="n">log</span> <span class="o">=</span> <span class="n">log</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprgobjectdestroy">LGPrgObjectDestroy</h2>
+
+<p>Destroys the contents of the LGPrgObject, also <code>free</code>ing any <code>log</code> string.</p></div></div><div class="code"><div class="wrapper"><span class="kt">void</span> <span class="nf">LGPrgObjectDestroy</span><span class="p">(</span><span class="n">LGPrgObject</span> <span class="o">*</span> <span class="n">o</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">o</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">free</span><span class="p">(</span><span class="n">o</span><span class="o">-&gt;</span><span class="n">log</span><span class="p">);</span>
+    <span class="n">memset</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">LGPrgObject</span><span class="p">));</span>
+  <span class="p">}</span>
+<span class="p">}</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprgobjectcopy">LGPrgObjectCopy</h2>
+
+<p>Copies <code>src</code> into <code>dst</code>, duplicating the log
+if it is present. This will not duplicate the
+OpenGL object that is being referred to.</p></div></div><div class="code"><div class="wrapper"><span class="kt">void</span> <span class="nf">LGPrgObjectCopy</span><span class="p">(</span><span class="n">LGPrgObject</span> <span class="o">*</span><span class="n">dst</span><span class="p">,</span> <span class="k">const</span> <span class="n">LGPrgObject</span> <span class="o">*</span><span class="n">src</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="o">*</span><span class="n">dst</span> <span class="o">=</span> <span class="o">*</span><span class="n">src</span><span class="p">;</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">src</span><span class="o">-&gt;</span><span class="n">log</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="kt">size_t</span> <span class="n">len</span> <span class="o">=</span> <span class="n">strlen</span><span class="p">(</span><span class="n">src</span><span class="o">-&gt;</span><span class="n">log</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="n">dst</span><span class="o">-&gt;</span><span class="n">log</span> <span class="o">=</span> <span class="p">(</span><span class="n">GLchar</span> <span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="n">len</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">GLchar</span><span class="p">));</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">dst</span><span class="o">-&gt;</span><span class="n">log</span><span class="p">)</span>
+    <span class="p">{</span>
+      <span class="n">strncpy</span><span class="p">(</span><span class="n">dst</span><span class="o">-&gt;</span><span class="n">log</span><span class="p">,</span> <span class="n">src</span><span class="o">-&gt;</span><span class="n">log</span><span class="p">,</span> <span class="n">len</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">else</span>
+    <span class="p">{</span>
+      <span class="n">LGLogOOM</span><span class="p">(</span><span class="s">&quot;Could not allocate memory to copy log in LGPrgObjectCopy&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprgshadernew">LGPrgShaderNew</h2>
+
+<p>Compiles the supplied shader string and returns a new program object. You
+are responsible for destroying the object with LGPrgObjectDestroy when
+you are finished with it.</p>
+
+<p>If any errors occur during creation, NULL is returned.</p></div></div><div class="code"><div class="wrapper"><span class="n">LGPrgObject</span> <span class="o">*</span> <span class="nf">LGPrgShaderNew</span><span class="p">(</span><span class="k">const</span> <span class="n">GLchar</span> <span class="o">*</span><span class="n">source</span><span class="p">,</span> <span class="n">GLenum</span> <span class="n">type</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">LGLogGLErrors</span><span class="p">(</span><span class="s">&quot;Preparing to create and compile shader.&quot;</span><span class="p">);</span>
+  
+  <span class="n">GLuint</span> <span class="n">shader</span> <span class="o">=</span> <span class="n">glCreateShader</span><span class="p">(</span><span class="n">type</span><span class="p">);</span>
+  
+  <span class="k">if</span> <span class="p">(</span><span class="mi">0</span> <span class="o">==</span> <span class="n">shader</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">LGLogGLErrors</span><span class="p">(</span><span class="s">&quot;Creating shader.&quot;</span><span class="p">);</span>
+    <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="p">}</span>
+  </div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Set the source code in the shader. We always treat the shader
+source as 1 long NUL terminated string rather than array
+of strings.</p></div></div><div class="code"><div class="wrapper">  <span class="n">glShaderSource</span><span class="p">(</span><span class="n">shader</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">source</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">GL_NO_ERROR</span> <span class="o">!=</span> <span class="n">LGLogGLErrors</span><span class="p">(</span><span class="s">&quot;Setting shader source.&quot;</span><span class="p">))</span>
+  <span class="p">{</span>
+    <span class="n">glDeleteShader</span><span class="p">(</span><span class="n">shader</span><span class="p">);</span>
+    <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="p">}</span>
+  
+    <span class="n">glCompileShader</span><span class="p">(</span><span class="n">shader</span><span class="p">);</span>
+  </div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>If we get this far, even if there are errors we want
+to continue as the log output may have some useful information</p></div></div><div class="code"><div class="wrapper">  <span class="n">LGLogGLErrors</span><span class="p">(</span><span class="s">&quot;Compiling shader.&quot;</span><span class="p">);</span>
+  
+  <span class="n">GLint</span> <span class="n">logLength</span><span class="p">;</span>
+  <span class="n">GLchar</span> <span class="o">*</span><span class="n">log</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="n">glGetShaderiv</span><span class="p">(</span><span class="n">shader</span><span class="p">,</span> <span class="n">GL_INFO_LOG_LENGTH</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">logLength</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">logLength</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">log</span> <span class="o">=</span> <span class="p">(</span><span class="n">GLchar</span> <span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="n">logLength</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">GLchar</span><span class="p">));</span>
+    <span class="n">glGetShaderInfoLog</span><span class="p">(</span><span class="n">shader</span><span class="p">,</span> <span class="n">logLength</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">log</span><span class="p">);</span>
+  <span class="p">}</span>
+  </div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Check the compile status, although still return a new
+object even if there is an error. This is more for
+debug/development use</p></div></div><div class="code"><div class="wrapper">    <span class="n">GLint</span> <span class="n">status</span><span class="p">;</span>
+    <span class="n">glGetShaderiv</span><span class="p">(</span><span class="n">shader</span><span class="p">,</span> <span class="n">GL_COMPILE_STATUS</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">status</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">GL_FALSE</span> <span class="o">==</span> <span class="n">status</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">LGLogError</span><span class="p">(</span><span class="s">&quot;Could not compile shader. Log: </span><span class="se">\n</span><span class="s">%s&quot;</span><span class="p">,</span> <span class="p">(</span><span class="n">log</span> <span class="o">?</span> <span class="n">log</span> <span class="o">:</span> <span class="s">&quot;&lt;NO LOG&gt;&quot;</span><span class="p">));</span>
+  <span class="p">}</span>
+  </div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Finally, create the new LGPrgObject to return</p></div></div><div class="code"><div class="wrapper">  <span class="n">LGPrgObject</span> <span class="o">*</span> <span class="n">o</span> <span class="o">=</span> <span class="p">(</span><span class="n">LGPrgObject</span> <span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">LGPrgObject</span><span class="p">));</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">o</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">LGPrgObjectInit</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">shader</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">log</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">else</span>
+  <span class="p">{</span>
+    <span class="n">glDeleteShader</span><span class="p">(</span><span class="n">shader</span><span class="p">);</span>
+    <span class="n">free</span><span class="p">(</span><span class="n">log</span><span class="p">);</span>
+    <span class="n">LGLogOOM</span><span class="p">(</span><span class="s">&quot;Out of memory when returning new shader object from LGPrgCompileShader&quot;</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="n">o</span><span class="p">;</span>
+<span class="p">}</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprgshaderdestroy">LGPrgShaderDestroy</h2>
+
+<p>Destroys the shader contents, releasing the shader
+reference and the log.</p></div></div><div class="code"><div class="wrapper"><span class="kt">void</span> <span class="nf">LGPrgShaderDestroy</span><span class="p">(</span><span class="n">LGPrgObject</span> <span class="o">*</span> <span class="n">shader</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">shader</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">glDeleteShader</span><span class="p">(</span><span class="n">shader</span><span class="o">-&gt;</span><span class="n">reference</span><span class="p">);</span>
+    <span class="n">LGPrgObjectDestroy</span><span class="p">(</span><span class="n">shader</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprgshaderdelete">LGPrgShaderDelete</h2>
+
+<p>Delete the shader object, releasing alls resources
+<code>free</code>ing the LGPrgObject.</p></div></div><div class="code"><div class="wrapper"><span class="kt">void</span> <span class="nf">LGPrgShaderDelete</span><span class="p">(</span><span class="n">LGPrgObject</span> <span class="o">**</span> <span class="n">shader_</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">shader_</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">LGPrgObject</span> <span class="o">*</span><span class="n">shader</span> <span class="o">=</span> <span class="o">*</span><span class="n">shader_</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">shader</span><span class="p">)</span>
+    <span class="p">{</span>
+      <span class="n">LGPrgShaderDestroy</span><span class="p">(</span><span class="n">shader</span><span class="p">);</span>
+      <span class="n">free</span><span class="p">(</span><span class="n">shader</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="o">*</span><span class="n">shader_</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+
+<span class="cp">#pragma mark - LGPrg</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h1 id="lgprg-methods">LGPrg methods</h1></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprgstoreactivevariables">LGPrgStoreActiveVariables</h2>
+
+<p>Re-parses the program for active attributes and uniforms, storing their
+locations respective hashes for future reference.</p></div></div><div class="code"><div class="wrapper"><span class="kt">void</span> <span class="nf">LGPrgStoreActiveVariables</span><span class="p">(</span><span class="n">LGPrg</span> <span class="o">*</span> <span class="n">prg</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">LGPrgVarHashClear</span><span class="p">(</span><span class="o">&amp;</span><span class="n">prg</span><span class="o">-&gt;</span><span class="n">attributes</span><span class="p">);</span>
+  <span class="n">prg</span><span class="o">-&gt;</span><span class="n">attributes</span> <span class="o">=</span> <span class="n">LGPrgVarHashOfActiveAttributes</span><span class="p">(</span><span class="n">prg</span><span class="o">-&gt;</span><span class="n">program</span><span class="p">.</span><span class="n">reference</span><span class="p">);</span>
+  
+  <span class="n">LGPrgVarHashClear</span><span class="p">(</span><span class="o">&amp;</span><span class="n">prg</span><span class="o">-&gt;</span><span class="n">uniforms</span><span class="p">);</span>
+  <span class="n">prg</span><span class="o">-&gt;</span><span class="n">uniforms</span> <span class="o">=</span> <span class="n">LGPrgVarHashOfActiveAttributes</span><span class="p">(</span><span class="n">prg</span><span class="o">-&gt;</span><span class="n">program</span><span class="p">.</span><span class="n">reference</span><span class="p">);</span>
+<span class="p">}</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprgnew">LGPrgNew</h2>
+
+<p>Creates a new LGPrg object from the specified shaders. All program
+attribute and uniform locations are stored as hashes in <code>attributes</code>
+and <code>uniforms</code> respectively.</p></div></div><div class="code"><div class="wrapper"><span class="n">LGPrg</span> <span class="o">*</span> <span class="nf">LGPrgNew</span><span class="p">(</span><span class="k">const</span> <span class="n">LGPrgObject</span> <span class="o">*</span> <span class="n">vertexShader</span><span class="p">,</span> <span class="k">const</span> <span class="n">LGPrgObject</span> <span class="o">*</span> <span class="n">fragmentShader</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">vertexShader</span> <span class="o">||</span> <span class="n">vertexShader</span><span class="o">-&gt;</span><span class="n">valid</span> <span class="o">==</span> <span class="n">GL_FALSE</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">LGLogError</span><span class="p">(</span><span class="s">&quot;Cannot create new LGPrg: vertexShader is NULL or not valid.&quot;</span><span class="p">);</span>
+    <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="p">}</span>
+  
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">fragmentShader</span> <span class="o">||</span> <span class="n">fragmentShader</span><span class="o">-&gt;</span><span class="n">valid</span> <span class="o">==</span> <span class="n">GL_FALSE</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">LGLogError</span><span class="p">(</span><span class="s">&quot;Cannot create new LGPrg: fragmentShader is NULL or not valid.&quot;</span><span class="p">);</span>
+    <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="p">}</span>
+  
+  <span class="n">GLuint</span> <span class="n">program</span> <span class="o">=</span> <span class="n">glCreateProgram</span><span class="p">();</span>
+  <span class="k">if</span> <span class="p">(</span><span class="mi">0</span> <span class="o">==</span> <span class="n">program</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">LGLogError</span><span class="p">(</span><span class="s">&quot;Cannot create new LGPrg: glCreateProgram failed.&quot;</span><span class="p">);</span>
+    <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="p">}</span>
+  
+  <span class="n">glAttachShader</span><span class="p">(</span><span class="n">program</span><span class="p">,</span> <span class="n">vertexShader</span><span class="o">-&gt;</span><span class="n">reference</span><span class="p">);</span>
+  <span class="n">LGLogGLErrors</span><span class="p">(</span><span class="s">&quot;Attached vertex shader.&quot;</span><span class="p">);</span>
+  
+  <span class="n">glAttachShader</span><span class="p">(</span><span class="n">program</span><span class="p">,</span> <span class="n">fragmentShader</span><span class="o">-&gt;</span><span class="n">reference</span><span class="p">);</span>
+  <span class="n">LGLogGLErrors</span><span class="p">(</span><span class="s">&quot;Attached fragment shader.&quot;</span><span class="p">);</span>
+
+  <span class="n">glLinkProgram</span><span class="p">(</span><span class="n">program</span><span class="p">);</span>
+  <span class="n">LGLogGLErrors</span><span class="p">(</span><span class="s">&quot;Linked program.&quot;</span><span class="p">);</span>
+
+  <span class="n">GLint</span> <span class="n">logLength</span><span class="p">;</span>
+  <span class="n">GLchar</span> <span class="o">*</span><span class="n">log</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="n">glGetProgramiv</span><span class="p">(</span><span class="n">program</span><span class="p">,</span> <span class="n">GL_INFO_LOG_LENGTH</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">logLength</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">logLength</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">log</span> <span class="o">=</span> <span class="p">(</span><span class="n">GLchar</span> <span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="n">logLength</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">GLchar</span><span class="p">));</span>
+    <span class="n">glGetProgramInfoLog</span><span class="p">(</span><span class="n">program</span><span class="p">,</span> <span class="n">logLength</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">log</span><span class="p">);</span>
+  <span class="p">}</span>
+    
+    <span class="n">GLint</span> <span class="n">status</span><span class="p">;</span>
+    <span class="n">glGetProgramiv</span><span class="p">(</span><span class="n">program</span><span class="p">,</span> <span class="n">GL_LINK_STATUS</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">status</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">GL_FALSE</span> <span class="o">==</span> <span class="n">status</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">LGLogError</span><span class="p">(</span><span class="s">&quot;Could not link program. Log: </span><span class="se">\n</span><span class="s">%s&quot;</span><span class="p">,</span> <span class="p">(</span><span class="n">log</span> <span class="o">?</span> <span class="n">log</span> <span class="o">:</span> <span class="s">&quot;&lt;NO LOG&gt;&quot;</span><span class="p">));</span>
+    <span class="p">}</span>
+  </div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Finally, create the new LGPrg to return</p></div></div><div class="code"><div class="wrapper">  <span class="n">LGPrg</span> <span class="o">*</span> <span class="n">prg</span> <span class="o">=</span> <span class="p">(</span><span class="n">LGPrg</span> <span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">LGPrg</span><span class="p">));</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">prg</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">memset</span><span class="p">(</span><span class="n">prg</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">LGPrg</span><span class="p">));</span>
+    
+    <span class="n">LGPrgObjectInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">prg</span><span class="o">-&gt;</span><span class="n">program</span><span class="p">,</span> <span class="n">program</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">log</span><span class="p">);</span>
+    <span class="n">LGPrgObjectCopy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">prg</span><span class="o">-&gt;</span><span class="n">vertexShader</span><span class="p">,</span> <span class="n">vertexShader</span><span class="p">);</span>
+    <span class="n">LGPrgObjectCopy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">prg</span><span class="o">-&gt;</span><span class="n">fragmentShader</span><span class="p">,</span> <span class="n">fragmentShader</span><span class="p">);</span>
+    
+    <span class="n">LGPrgStoreActiveVariables</span><span class="p">(</span><span class="n">prg</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">else</span>
+  <span class="p">{</span>
+    <span class="n">glDeleteProgram</span><span class="p">(</span><span class="n">program</span><span class="p">);</span>
+    <span class="n">free</span><span class="p">(</span><span class="n">log</span><span class="p">);</span>
+    <span class="n">LGLogOOM</span><span class="p">(</span><span class="s">&quot;Out of memory when returning new LGPrg from LGPrgNew&quot;</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="n">prg</span><span class="p">;</span>
+<span class="p">}</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprgnewfromsource">LGPrgNewFromSource</h2>
+
+<p>Creates a new LGPrg from the supplied source strings</p></div></div><div class="code"><div class="wrapper"><span class="n">LGPrg</span> <span class="o">*</span> <span class="nf">LGPrgNewFromSource</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">vertexShader</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">fragmentShader</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">LGPrgObject</span> <span class="o">*</span> <span class="n">vertex</span> <span class="o">=</span> <span class="n">LGPrgShaderNew</span><span class="p">(</span><span class="n">vertexShader</span><span class="p">,</span> <span class="n">GL_VERTEX_SHADER</span><span class="p">);</span>
+  <span class="n">LGPrgObject</span> <span class="o">*</span> <span class="n">fragment</span> <span class="o">=</span> <span class="n">LGPrgShaderNew</span><span class="p">(</span><span class="n">fragmentShader</span><span class="p">,</span> <span class="n">GL_FRAGMENT_SHADER</span><span class="p">);</span>
+  <span class="n">LGPrg</span> <span class="o">*</span> <span class="n">program</span> <span class="o">=</span> <span class="n">LGPrgNew</span><span class="p">(</span><span class="n">vertex</span><span class="p">,</span> <span class="n">fragment</span><span class="p">);</span>
+  
+  <span class="n">LGPrgShaderDelete</span><span class="p">(</span><span class="o">&amp;</span><span class="n">vertex</span><span class="p">);</span>
+  <span class="n">LGPrgShaderDelete</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fragment</span><span class="p">);</span>
+  
+  <span class="k">return</span> <span class="n">program</span><span class="p">;</span>
+<span class="p">}</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprgnewfromfiles">LGPrgNewFromFiles</h2>
+
+<p>Creates a new LGPrg from the contents of the specified files</p></div></div><div class="code"><div class="wrapper"><span class="n">LGPrg</span> <span class="o">*</span> <span class="nf">LGPrgNewFromFiles</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">vertexShaderPath</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">fragmentShaderPath</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">char</span> <span class="o">*</span><span class="n">vertexShader</span> <span class="o">=</span> <span class="n">LGFileToString</span><span class="p">(</span><span class="n">vertexShaderPath</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+  <span class="kt">char</span> <span class="o">*</span><span class="n">fragmentShader</span> <span class="o">=</span> <span class="n">LGFileToString</span><span class="p">(</span><span class="n">fragmentShaderPath</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+  <span class="n">LGPrg</span> <span class="o">*</span> <span class="n">program</span> <span class="o">=</span> <span class="n">LGPrgNewFromSource</span><span class="p">(</span><span class="n">vertexShader</span><span class="p">,</span> <span class="n">fragmentShader</span><span class="p">);</span>
+  
+  <span class="n">free</span><span class="p">(</span><span class="n">vertexShader</span><span class="p">);</span>
+  <span class="n">free</span><span class="p">(</span><span class="n">fragmentShader</span><span class="p">);</span>
+  
+  <span class="k">return</span> <span class="n">program</span><span class="p">;</span>
+<span class="p">}</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprgattriblocation">LGPrgAttribLocation</h2>
+
+<p>Returns the location for the named attribute. If the
+attribute is not found, returns -1.</p></div></div><div class="code"><div class="wrapper"><span class="n">GLuint</span> <span class="nf">LGPrgAttribLocation</span><span class="p">(</span><span class="k">const</span> <span class="n">LGPrg</span> <span class="o">*</span><span class="n">prg</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">prg</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="n">LGPrgVarLocation</span><span class="p">(</span><span class="n">prg</span><span class="o">-&gt;</span><span class="n">attributes</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">else</span>
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprguniformlocation">LGPrgUniformLocation</h2>
+
+<p>Returns the location for the named uniform. If the
+attribute is not found, returns -1.</p></div></div><div class="code"><div class="wrapper"><span class="n">GLuint</span> <span class="nf">LGPrgUniformLocation</span><span class="p">(</span><span class="k">const</span> <span class="n">LGPrg</span> <span class="o">*</span><span class="n">prg</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">prg</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="n">LGPrgVarLocation</span><span class="p">(</span><span class="n">prg</span><span class="o">-&gt;</span><span class="n">attributes</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">else</span>
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprgdelete">LGPrgDelete</h2>
+
+<p>Deletes the program, releasing all resources and <code>free</code>ing
+the LGPrg object</p></div></div><div class="code"><div class="wrapper"><span class="kt">void</span> <span class="nf">LGPrgDelete</span><span class="p">(</span><span class="n">LGPrg</span> <span class="o">**</span> <span class="n">prg_</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">prg_</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">LGPrg</span> <span class="o">*</span><span class="n">prg</span> <span class="o">=</span> <span class="o">*</span><span class="n">prg_</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">prg</span><span class="p">)</span>
+    <span class="p">{</span>
+      <span class="n">glDetachShader</span><span class="p">(</span><span class="n">prg</span><span class="o">-&gt;</span><span class="n">program</span><span class="p">.</span><span class="n">reference</span><span class="p">,</span> <span class="n">prg</span><span class="o">-&gt;</span><span class="n">vertexShader</span><span class="p">.</span><span class="n">reference</span><span class="p">);</span>
+      <span class="n">LGPrgShaderDestroy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">prg</span><span class="o">-&gt;</span><span class="n">vertexShader</span><span class="p">);</span>
+
+      <span class="n">glDetachShader</span><span class="p">(</span><span class="n">prg</span><span class="o">-&gt;</span><span class="n">program</span><span class="p">.</span><span class="n">reference</span><span class="p">,</span> <span class="n">prg</span><span class="o">-&gt;</span><span class="n">fragmentShader</span><span class="p">.</span><span class="n">reference</span><span class="p">);</span>
+      <span class="n">LGPrgShaderDestroy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">prg</span><span class="o">-&gt;</span><span class="n">fragmentShader</span><span class="p">);</span>
+      
+      <span class="n">glDeleteProgram</span><span class="p">(</span><span class="n">prg</span><span class="o">-&gt;</span><span class="n">program</span><span class="p">.</span><span class="n">reference</span><span class="p">);</span>
+      <span class="n">LGPrgObjectDestroy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">prg</span><span class="o">-&gt;</span><span class="n">program</span><span class="p">);</span>
+      
+      <span class="n">LGPrgVarHashClear</span><span class="p">(</span><span class="o">&amp;</span><span class="n">prg</span><span class="o">-&gt;</span><span class="n">attributes</span><span class="p">);</span>
+      <span class="n">LGPrgVarHashClear</span><span class="p">(</span><span class="o">&amp;</span><span class="n">prg</span><span class="o">-&gt;</span><span class="n">uniforms</span><span class="p">);</span>
+      
+      <span class="n">memset</span><span class="p">(</span><span class="n">prg</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">LGPrg</span><span class="p">));</span>
+      <span class="n">free</span><span class="p">(</span><span class="n">prg</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="o">*</span><span class="n">prg_</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span></div></div></div></div></body></html>

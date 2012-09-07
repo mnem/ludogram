@@ -1,0 +1,90 @@
+<!DOCTYPE html><html lang="en"><head><title>src/LGTypes</title></head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"><meta name="groc-relative-root" content="../"><meta name="groc-document-path" content="src/LGTypes"><meta name="groc-project-path" content="core/src/LGTypes.h"><meta name="groc-github-url" content="https://github.com/mnem/mnem"><link rel="stylesheet" type="text/css" media="all" href="../assets/style.css"><script type="text/javascript" src="../assets/behavior.js"></script><body><div id="meta"><div class="file-path"><a href="https://github.com/mnem/mnem/blob/master/core/src/LGTypes.h">core/src/LGTypes.h</a></div></div><div id="document"><div class="segment"><div class="comments"><div class="wrapper"><h1 id="lgtypes">LGTypes</h1>
+
+<p>Various data structures used throughout Ludogram.</p>
+
+<hr />
+
+<p>(c) Copyright 2012 David Wagner.</p>
+
+<p>Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:</p>
+
+<p>The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.</p>
+
+<p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.</p>
+
+<hr /></div></div><div class="code"><div class="wrapper"><span class="cp">#ifndef LGTypes_h</span>
+<span class="cp">#define LGTypes_h</span>
+
+<span class="cp">#include &lt;OpenGLES/ES2/gl.h&gt;</span>
+<span class="cp">#include &lt;OpenGLES/ES2/glext.h&gt;</span>
+
+<span class="cp">#include &quot;../../external/uthash/uthash-1.9.6/src/uthash.h&quot;</span>
+
+<span class="cp">#ifdef __cplusplus</span>
+<span class="k">extern</span> <span class="s">&quot;C&quot;</span> <span class="p">{</span>
+<span class="cp">#endif </span><span class="c1">// __cplusplus</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h1 id="data-structures-for-lgprg">Data structures for LGPrg*</h1></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprgvar-structure">LGPrgVar structure</h2>
+
+<p>This structure holds information about various attribute
+and uniform variables in a program.</p>
+
+<p>Generally used as part of an <code>LGPrg</code> object.</p></div></div><div class="code"><div class="wrapper"><span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Make the structure hashable for uthash</p></div></div><div class="code"><div class="wrapper">  <span class="n">UT_hash_handle</span> <span class="n">hh</span><span class="p">;</span>
+  </div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>OpenGL properties for the variable</p></div></div><div class="code"><div class="wrapper">  <span class="n">GLint</span> <span class="n">location</span><span class="p">;</span>
+  <span class="n">GLint</span> <span class="n">size</span><span class="p">;</span>
+  <span class="n">GLenum</span> <span class="n">type</span><span class="p">;</span>
+  </div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Name of the variable, which is also the has key. This string is
+variable size (but NUL terminated, which means LGPrgVar structures
+are variable size, so you can't put them in an array (although
+you have an array of pointers to structures of course).</p></div></div><div class="code"><div class="wrapper">  <span class="kt">char</span> <span class="n">name</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+<span class="p">}</span> <span class="n">LGPrgVar</span><span class="p">;</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprgobject-structure">LGPrgObject structure</h2>
+
+<p>Structure to hold a program object and any relevant log. A
+program object is a shader or the final linked program itself</p>
+
+<p>Generally used as part of an <code>LGPrg</code> object.</p></div></div><div class="code"><div class="wrapper"><span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>The shader or program reference</p></div></div><div class="code"><div class="wrapper">  <span class="n">GLuint</span> <span class="n">reference</span><span class="p">;</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Whether it was compiled or linked successfully</p></div></div><div class="code"><div class="wrapper">  <span class="n">GLboolean</span> <span class="n">valid</span><span class="p">;</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><p>Any associated log</p></div></div><div class="code"><div class="wrapper">  <span class="n">GLchar</span> <span class="o">*</span> <span class="n">log</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">LGPrgObject</span><span class="p">;</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgprg-structure">LGPrg structure</h2>
+
+<p>Structure to hold the details of a linked shader program. The
+structure layout is such that you can cast a <code>struct LGPrg *</code>
+to a <code>GLuint *</code> and pass it as an OpenGL progam object, although
+that feels a bit hacky - you should use program.reference instead.</p>
+
+<p>LGPrg also stores hashes for all the active attributes and uniforms
+in a shader program. You can either access these hashes directly
+using <a href="http://uthash.sourceforge.net/userguide.html">uthash</a>
+string-within-structure key functions. Alternatively, you can use
+the convienience methods <code>LGPrgAttribLocation</code> and
+<code>LGPrgUniformLocation</code></p></div></div><div class="code"><div class="wrapper"><span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="n">LGPrgObject</span> <span class="n">program</span><span class="p">;</span>
+  <span class="n">LGPrgObject</span> <span class="n">vertexShader</span><span class="p">;</span>
+  <span class="n">LGPrgObject</span> <span class="n">fragmentShader</span><span class="p">;</span>
+  
+  <span class="n">LGPrgVar</span> <span class="o">*</span> <span class="n">attributes</span><span class="p">;</span>
+  <span class="n">LGPrgVar</span> <span class="o">*</span> <span class="n">uniforms</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">LGPrg</span><span class="p">;</span></div></div></div><div class="segment"><div class="comments"><div class="wrapper"><h2 id="lgactivevarquery-structure">LGActiveVarQuery structure</h2>
+
+<p>Structure to hold details for extractive active variables
+from a program. Primarily used internally by functions which
+populate the LGPrg variable hashes</p></div></div><div class="code"><div class="wrapper"><span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="n">GLenum</span> <span class="n">queryType</span><span class="p">;</span>
+  <span class="n">GLenum</span> <span class="n">queryTypeNameLength</span><span class="p">;</span>
+  <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">getActiveVariable</span><span class="p">)(</span><span class="n">GLuint</span><span class="p">,</span> <span class="n">GLuint</span><span class="p">,</span> <span class="n">GLsizei</span><span class="p">,</span> <span class="n">GLsizei</span> <span class="o">*</span><span class="p">,</span> <span class="n">GLint</span> <span class="o">*</span><span class="p">,</span> <span class="n">GLenum</span> <span class="o">*</span><span class="p">,</span> <span class="n">GLchar</span> <span class="o">*</span><span class="p">);</span>
+  <span class="n">GLint</span> <span class="p">(</span><span class="o">*</span><span class="n">getVariableLocation</span><span class="p">)(</span><span class="n">GLuint</span><span class="p">,</span> <span class="k">const</span> <span class="n">GLchar</span> <span class="o">*</span><span class="p">);</span>
+<span class="p">}</span> <span class="n">LGActiveVarQuery</span><span class="p">;</span>
+
+<span class="cp">#ifdef __cplusplus</span>
+<span class="p">}</span>
+<span class="cp">#endif </span><span class="c1">// __cplusplus</span>
+
+<span class="cp">#endif </span><span class="c1">// LGTypes_h</span></div></div></div></div></body></html>

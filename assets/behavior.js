@@ -168,6 +168,380 @@ f.event={add:function(a,c,d,e,g){var h,i,j,k,l,m,n,o,p,q,r,s;if(!(a.nodeType===3
               "singleLineComment": ["//"],
               "name": "C"
             },
+            "sourcePath": "/Users/mnem/Developer/github/mnem/ludogram/core/src/LGLog.c",
+            "projectPath": "core/src/LGLog.c",
+            "targetPath": "src/LGLog",
+            "firstHeader": {
+              "type": "heading",
+              "data": {
+                "level": 1,
+                "title": "LGLog",
+                "slug": "lglog",
+                "isFileHeader": true
+              },
+              "depth": 1,
+              "children": [
+                {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "_LGvLog",
+                    "slug": "-lgvlog"
+                  },
+                  "depth": 2
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGSetLogLevel",
+                    "slug": "lgsetloglevel"
+                  },
+                  "depth": 2
+                }
+              ]
+            },
+            "title": "LGLog"
+          },
+          "depth": 2,
+          "outline": [
+            {
+              "type": "heading",
+              "data": {
+                "level": 2,
+                "title": "_LGvLog",
+                "slug": "-lgvlog"
+              },
+              "depth": 2
+            }, {
+              "type": "heading",
+              "data": {
+                "level": 2,
+                "title": "LGSetLogLevel",
+                "slug": "lgsetloglevel"
+              },
+              "depth": 2
+            }
+          ]
+        }, {
+          "type": "file",
+          "data": {
+            "language": {
+              "nameMatchers": [".c", ".h"],
+              "pygmentsLexer": "c",
+              "singleLineComment": ["//"],
+              "name": "C"
+            },
+            "sourcePath": "/Users/mnem/Developer/github/mnem/ludogram/core/src/LGPrg.c",
+            "projectPath": "core/src/LGPrg.c",
+            "targetPath": "src/LGPrg",
+            "firstHeader": {
+              "type": "heading",
+              "data": {
+                "level": 1,
+                "title": "LGOpenGLProgram",
+                "slug": "lgopenglprogram",
+                "isFileHeader": true
+              },
+              "depth": 1,
+              "children": [
+                {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "_LGvLogGLErrors",
+                    "slug": "-lgvlogglerrors"
+                  },
+                  "depth": 2
+                }
+              ]
+            },
+            "title": "LGOpenGLProgram"
+          },
+          "depth": 2,
+          "outline": [
+            {
+              "type": "heading",
+              "data": {
+                "level": 2,
+                "title": "_LGvLogGLErrors",
+                "slug": "-lgvlogglerrors"
+              },
+              "depth": 2
+            }, {
+              "type": "heading",
+              "data": {
+                "level": 1,
+                "title": "LGPrgVar methods",
+                "slug": "lgprgvar-methods"
+              },
+              "depth": 1,
+              "children": [
+                {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgVarNew",
+                    "slug": "lgprgvarnew"
+                  },
+                  "depth": 2
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgVarDelete",
+                    "slug": "lgprgvardelete"
+                  },
+                  "depth": 2
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgVarHashClear",
+                    "slug": "lgprgvarhashclear"
+                  },
+                  "depth": 2
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgVarHashOfActiveVariables",
+                    "slug": "lgprgvarhashofactivevariables"
+                  },
+                  "depth": 2
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgVarHashOfActiveAttributes",
+                    "slug": "lgprgvarhashofactiveattributes"
+                  },
+                  "depth": 2
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgVarHashOfActiveUniforms",
+                    "slug": "lgprgvarhashofactiveuniforms"
+                  },
+                  "depth": 2
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgVarLocation",
+                    "slug": "lgprgvarlocation"
+                  },
+                  "depth": 2
+                }
+              ]
+            }, {
+              "type": "heading",
+              "data": {
+                "level": 1,
+                "title": "LGPrgObject methods",
+                "slug": "lgprgobject-methods"
+              },
+              "depth": 1,
+              "children": [
+                {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgObjectInit",
+                    "slug": "lgprgobjectinit"
+                  },
+                  "depth": 2
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgObjectDestroy",
+                    "slug": "lgprgobjectdestroy"
+                  },
+                  "depth": 2
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgObjectCopy",
+                    "slug": "lgprgobjectcopy"
+                  },
+                  "depth": 2
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgShaderNew",
+                    "slug": "lgprgshadernew"
+                  },
+                  "depth": 2
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgShaderDestroy",
+                    "slug": "lgprgshaderdestroy"
+                  },
+                  "depth": 2
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgShaderDelete",
+                    "slug": "lgprgshaderdelete"
+                  },
+                  "depth": 2
+                }
+              ]
+            }, {
+              "type": "heading",
+              "data": {
+                "level": 1,
+                "title": "LGPrg methods",
+                "slug": "lgprg-methods"
+              },
+              "depth": 1,
+              "children": [
+                {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgStoreActiveVariables",
+                    "slug": "lgprgstoreactivevariables"
+                  },
+                  "depth": 2
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgNew",
+                    "slug": "lgprgnew"
+                  },
+                  "depth": 2
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgNewFromSource",
+                    "slug": "lgprgnewfromsource"
+                  },
+                  "depth": 2
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgNewFromFiles",
+                    "slug": "lgprgnewfromfiles"
+                  },
+                  "depth": 2
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgAttribLocation",
+                    "slug": "lgprgattriblocation"
+                  },
+                  "depth": 2
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgUniformLocation",
+                    "slug": "lgprguniformlocation"
+                  },
+                  "depth": 2
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgDelete",
+                    "slug": "lgprgdelete"
+                  },
+                  "depth": 2
+                }
+              ]
+            }
+          ]
+        }, {
+          "type": "file",
+          "data": {
+            "language": {
+              "nameMatchers": [".c", ".h"],
+              "pygmentsLexer": "c",
+              "singleLineComment": ["//"],
+              "name": "C"
+            },
+            "sourcePath": "/Users/mnem/Developer/github/mnem/ludogram/core/src/LGTypes.h",
+            "projectPath": "core/src/LGTypes.h",
+            "targetPath": "src/LGTypes",
+            "firstHeader": {
+              "type": "heading",
+              "data": {
+                "level": 1,
+                "title": "LGTypes",
+                "slug": "lgtypes",
+                "isFileHeader": true
+              },
+              "depth": 1
+            },
+            "title": "LGTypes"
+          },
+          "depth": 2,
+          "outline": [
+            {
+              "type": "heading",
+              "data": {
+                "level": 1,
+                "title": "Data structures for LGPrg*",
+                "slug": "data-structures-for-lgprg"
+              },
+              "depth": 1,
+              "children": [
+                {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgVar structure",
+                    "slug": "lgprgvar-structure"
+                  },
+                  "depth": 2
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrgObject structure",
+                    "slug": "lgprgobject-structure"
+                  },
+                  "depth": 2
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGPrg structure",
+                    "slug": "lgprg-structure"
+                  },
+                  "depth": 2
+                }, {
+                  "type": "heading",
+                  "data": {
+                    "level": 2,
+                    "title": "LGActiveVarQuery structure",
+                    "slug": "lgactivevarquery-structure"
+                  },
+                  "depth": 2
+                }
+              ]
+            }
+          ]
+        }, {
+          "type": "file",
+          "data": {
+            "language": {
+              "nameMatchers": [".c", ".h"],
+              "pygmentsLexer": "c",
+              "singleLineComment": ["//"],
+              "name": "C"
+            },
             "sourcePath": "/Users/mnem/Developer/github/mnem/ludogram/core/src/PGContext.c",
             "projectPath": "core/src/PGContext.c",
             "targetPath": "src/PGContext",
