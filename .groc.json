@@ -1,6 +1,7 @@
 {
   "glob": [
     "README.md",
+    "core/src/LGTypes.h",
     "core/**/*.c",
     "ios/**/*.{c,m}"
   ],

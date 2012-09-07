@@ -1,6 +1,6 @@
-// # Ludogram
+// # LGFile
 //
-// [Ludogram](https://github.com/mnem/ludogram/).
+// Simple file access.
 //
 // - - -
 // (c) Copyright 2012 David Wagner.
@@ -24,22 +24,29 @@
 // THE SOFTWARE.
 // - - -
 
-#ifndef Ludogram_h
-#define Ludogram_h
-
-#include "LGTypes.h"
-#include "LGLog.h"
-#include "LGFile.h"
-#include "LGPrg.h"
+#ifndef LGFile_h
+#define LGFile_h
 
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
 
 
+/**
+ * Read and return the contents of the file specified by path in a new
+ * char buffer.
+ *
+ * @param path Path to read. Must be suitable for passing to stdio functions.
+ * @param stdioErrno Optional int point to store any errno. May be NULL.
+ *
+ * @return On success, returns a newly malloc'd buffer containing the
+ *		contents. You must free() this buffer when finished. On failure
+ *		returns NULL and sets stdioErrno if available.
+ */
+extern char* LGFileToString(const char *path, int *stdioErrno);
 
 #ifdef __cplusplus
 }
 #endif // __cplusplus
 
-#endif // Ludogram_h
+#endif // LGFile_h

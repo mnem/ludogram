@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		BB52CC9915FA744400890835 /* LGLog.c in Sources */ = {isa = PBXBuildFile; fileRef = BB52CC9815FA744400890835 /* LGLog.c */; };
 		BB8D9B0615F3FC0400B43E03 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB8D9B0515F3FC0400B43E03 /* UIKit.framework */; };
 		BB8D9B0815F3FC0400B43E03 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB8D9B0715F3FC0400B43E03 /* Foundation.framework */; };
 		BB8D9B0A15F3FC0400B43E03 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB8D9B0915F3FC0400B43E03 /* CoreGraphics.framework */; };
@@ -24,10 +25,15 @@
 		BB8D9B4015F3FDE100B43E03 /* PGView.m in Sources */ = {isa = PBXBuildFile; fileRef = BB8D9B3F15F3FDE100B43E03 /* PGView.m */; };
 		BB8D9B4215F3FF2E00B43E03 /* OpenGLES.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB8D9B4115F3FF2E00B43E03 /* OpenGLES.framework */; };
 		BB8D9B4415F3FFA700B43E03 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB8D9B4315F3FFA700B43E03 /* QuartzCore.framework */; };
+		BB9F7A2615F7F3FB00BB9B35 /* LGPrg.c in Sources */ = {isa = PBXBuildFile; fileRef = BB9F7A2515F7F3FB00BB9B35 /* LGPrg.c */; };
 		BBCDB8E615F54B6800818230 /* LGFile.c in Sources */ = {isa = PBXBuildFile; fileRef = BBCDB8E515F54B6800818230 /* LGFile.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		BB52CC9515FA703E00890835 /* LGPrg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = LGPrg.h; path = ../../../core/src/LGPrg.h; sourceTree = "<group>"; };
+		BB52CC9615FA731000890835 /* LGFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = LGFile.h; path = ../../../core/src/LGFile.h; sourceTree = "<group>"; };
+		BB52CC9715FA737100890835 /* LGLog.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = LGLog.h; path = ../../../core/src/LGLog.h; sourceTree = "<group>"; };
+		BB52CC9815FA744400890835 /* LGLog.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = LGLog.c; path = ../../../core/src/LGLog.c; sourceTree = "<group>"; };
 		BB8D9B0115F3FC0400B43E03 /* Ludogram Example 01.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Ludogram Example 01.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB8D9B0515F3FC0400B43E03 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		BB8D9B0715F3FC0400B43E03 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
@@ -58,6 +64,8 @@
 		BB8D9B3F15F3FDE100B43E03 /* PGView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = PGView.m; path = ../../../ios/src/PGView.m; sourceTree = "<group>"; };
 		BB8D9B4115F3FF2E00B43E03 /* OpenGLES.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGLES.framework; path = System/Library/Frameworks/OpenGLES.framework; sourceTree = SDKROOT; };
 		BB8D9B4315F3FFA700B43E03 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		BB9F7A2515F7F3FB00BB9B35 /* LGPrg.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = LGPrg.c; path = ../../../core/src/LGPrg.c; sourceTree = "<group>"; };
+		BBA3CE6815FA653900B5E9BF /* LGTypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = LGTypes.h; path = ../../../core/src/LGTypes.h; sourceTree = "<group>"; };
 		BBCDB8E515F54B6800818230 /* LGFile.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = LGFile.c; path = ../../../core/src/LGFile.c; sourceTree = "<group>"; };
 		BBCDB8E815F56B1900818230 /* Ludogram.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Ludogram.h; path = ../../../core/src/Ludogram.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -78,6 +86,24 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		BB52CC9315FA6C7000890835 /* old */ = {
+			isa = PBXGroup;
+			children = (
+				BB8D9B2B15F3FC6E00B43E03 /* PGContext.c */,
+				BB8D9B2C15F3FC6E00B43E03 /* PGContext.h */,
+				BB8D9B2E15F3FC6E00B43E03 /* PGDataTypes.h */,
+				BB8D9B2D15F3FC6E00B43E03 /* PGDataTypes_private.h */,
+				BB8D9B3115F3FC6E00B43E03 /* PGLog.c */,
+				BB8D9B3215F3FC6E00B43E03 /* PGLog.h */,
+				BB8D9B3315F3FC6E00B43E03 /* PGProgram.c */,
+				BB8D9B3415F3FC6E00B43E03 /* PGProgram.h */,
+				BB8D9B3515F3FC6E00B43E03 /* PGRenderer.c */,
+				BB8D9B3615F3FC6E00B43E03 /* PGRenderer.h */,
+				BB8D9B3715F3FC6E00B43E03 /* Pictogram.h */,
+			);
+			name = old;
+			sourceTree = "<group>";
+		};
 		BB8D9AF615F3FC0400B43E03 = {
 			isa = PBXGroup;
 			children = (
@@ -146,18 +172,14 @@
 		BB8D9B2615F3FC1900B43E03 /* core */ = {
 			isa = PBXGroup;
 			children = (
-				BB8D9B2B15F3FC6E00B43E03 /* PGContext.c */,
-				BB8D9B2C15F3FC6E00B43E03 /* PGContext.h */,
-				BB8D9B2E15F3FC6E00B43E03 /* PGDataTypes.h */,
-				BB8D9B2D15F3FC6E00B43E03 /* PGDataTypes_private.h */,
+				BB52CC9315FA6C7000890835 /* old */,
 				BBCDB8E515F54B6800818230 /* LGFile.c */,
-				BB8D9B3115F3FC6E00B43E03 /* PGLog.c */,
-				BB8D9B3215F3FC6E00B43E03 /* PGLog.h */,
-				BB8D9B3315F3FC6E00B43E03 /* PGProgram.c */,
-				BB8D9B3415F3FC6E00B43E03 /* PGProgram.h */,
-				BB8D9B3515F3FC6E00B43E03 /* PGRenderer.c */,
-				BB8D9B3615F3FC6E00B43E03 /* PGRenderer.h */,
-				BB8D9B3715F3FC6E00B43E03 /* Pictogram.h */,
+				BB52CC9815FA744400890835 /* LGLog.c */,
+				BB9F7A2515F7F3FB00BB9B35 /* LGPrg.c */,
+				BB52CC9715FA737100890835 /* LGLog.h */,
+				BB52CC9615FA731000890835 /* LGFile.h */,
+				BB52CC9515FA703E00890835 /* LGPrg.h */,
+				BBA3CE6815FA653900B5E9BF /* LGTypes.h */,
 				BBCDB8E815F56B1900818230 /* Ludogram.h */,
 			);
 			name = core;
@@ -247,6 +269,8 @@
 				BB8D9B3C15F3FC6E00B43E03 /* PGRenderer.c in Sources */,
 				BB8D9B4015F3FDE100B43E03 /* PGView.m in Sources */,
 				BBCDB8E615F54B6800818230 /* LGFile.c in Sources */,
+				BB9F7A2615F7F3FB00BB9B35 /* LGPrg.c in Sources */,
+				BB52CC9915FA744400890835 /* LGLog.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

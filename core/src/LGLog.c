@@ -1,6 +1,6 @@
-// # Ludogram
+// # LGLog
 //
-// [Ludogram](https://github.com/mnem/ludogram/).
+// Simple logging to stdout.
 //
 // - - -
 // (c) Copyright 2012 David Wagner.
@@ -24,22 +24,38 @@
 // THE SOFTWARE.
 // - - -
 
-#ifndef Ludogram_h
-#define Ludogram_h
 
-#include "LGTypes.h"
+#include <stdio.h>
+#include <stdarg.h>
+
 #include "LGLog.h"
-#include "LGFile.h"
-#include "LGPrg.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
+// Cheap, nasty and non threadsafe global for specifying
+// the log level
+static LGLogLevel gLGMinimumLogLevel = LGLogLevelDebug;
 
 
-
-#ifdef __cplusplus
+// ## _LGvLog
+//
+// Variable argument logging function. Generally never called
+// directly, but instead through one of the logging macros.
+void _LGvLog(LGLogLevel level, const char *fmt, ...)
+{
+	if (level >= gLGMinimumLogLevel)
+	{
+		va_list ap;
+		va_start(ap, fmt);
+		vprintf(fmt, ap);
+		va_end(ap);
+	}
 }
-#endif // __cplusplus
 
-#endif // Ludogram_h
+
+// ## LGSetLogLevel
+//
+// Sets the amount of logging. Higher numbers log less, but
+// you should be passing a LGLogLevel enum anyway.
+void LGSetLogLevel(LGLogLevel level)
+{
+	gLGMinimumLogLevel = level;
+}
