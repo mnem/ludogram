@@ -432,7 +432,7 @@ void LGPrgStoreActiveVariables(LGPrg * prg)
 	prg->attributes = LGPrgVarHashOfActiveAttributes(prg->program.reference);
 	
 	LGPrgVarHashClear(&prg->uniforms);
-	prg->uniforms = LGPrgVarHashOfActiveAttributes(prg->program.reference);
+	prg->uniforms = LGPrgVarHashOfActiveUniforms(prg->program.reference);
 }
 
 
@@ -566,7 +566,7 @@ GLuint LGPrgUniformLocation(const LGPrg *prg, const char *name)
 {
 	if (prg)
 	{
-		return LGPrgVarLocation(prg->attributes, name);
+		return LGPrgVarLocation(prg->uniforms, name);
 	}
 	else
 	{
