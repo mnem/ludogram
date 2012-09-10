@@ -10,10 +10,10 @@
 
 #import "PGView.h"
 #import "Pictogram.h"
+#import "Ludogram.h"
 
 
-
-static void ApplyOrtho(PGProgram program, float maxX, float maxY)
+static void ApplyOrtho(LGPrg * prg, float maxX, float maxY)
 {
     float a = 1.0f / maxX;
     float b = 1.0f / maxY;
@@ -24,11 +24,11 @@ static void ApplyOrtho(PGProgram program, float maxX, float maxY)
         0, 0,  0, 1
     };
     
-    GLint projectionUniform = pgProgramUniformLocation(program, "projectionMatrix");//  glGetUniformLocation(m_simpleProgram, "Projection");
+    GLint projectionUniform = LGPrgUniformLocation(prg, "projectionMatrix");
     glUniformMatrix4fv(projectionUniform, 1, 0, &ortho[0]);
 }
 
-static void ApplyRotation(PGProgram program, float degrees)
+static void ApplyRotation(LGPrg * prg, float degrees)
 {
     float radians = degrees * 3.14159f / 180.0f;
     float s = sin(radians);
@@ -40,7 +40,7 @@ static void ApplyRotation(PGProgram program, float degrees)
         0, 0, 0, 1
     };
     
-    GLint modelviewUniform = pgProgramUniformLocation(program, "modelViewMatrix");
+    GLint modelviewUniform = LGPrgUniformLocation(prg, "modelViewMatrix");
     glUniformMatrix4fv(modelviewUniform, 1, 0, &zRotation[0]);
 }
 
@@ -49,7 +49,8 @@ static void ApplyRotation(PGProgram program, float degrees)
 {
     GLuint _vertexArray;
     GLuint _vertexBuffer;
-	PGProgram _pgprogram;
+//	PGProgram _pgprogram;
+	LGPrg * _prg;
 }
 - (void)setupGL;
 - (void)tearDownGL;
@@ -182,14 +183,14 @@ static void ApplyRotation(PGProgram program, float degrees)
 	
     [self loadShaders];
 	
-	pgRendererUseProgram(self.renderer, _pgprogram);
+	glUseProgram(_prg->program.reference);
 	
-	ApplyOrtho(_pgprogram, 2, 3);
+	ApplyOrtho(_prg, 2, 3);
 }
 
 - (void)tearDownGL
 {
-	pgProgramDestroy(&_pgprogram);
+	LGPrgDelete(&_prg);
 }
 
 typedef struct {
@@ -214,10 +215,10 @@ const static Vertex Vertices[] = {
 	glClearColor(0.5f, 0.5f, 0.5f, 1);
 	glClear(GL_COLOR_BUFFER_BIT);
 	
-	ApplyRotation(_pgprogram, 0);
+	ApplyRotation(_prg, 0);
 	
-	GLuint positionSlot = pgProgramAttribLocation(_pgprogram, "position");
-	GLuint colorSlot = pgProgramAttribLocation(_pgprogram, "color");
+	GLuint positionSlot = LGPrgAttribLocation(_prg, "position");
+	GLuint colorSlot = LGPrgAttribLocation(_prg, "color");
 	
 	glEnableVertexAttribArray(positionSlot);
 	glEnableVertexAttribArray(colorSlot);
@@ -242,25 +243,12 @@ const static Vertex Vertices[] = {
     NSString *fragShaderPathname = [[NSBundle mainBundle] pathForResource:@"mvp_col" ofType:@"fsh" inDirectory:@"shaders"];
 	const char *vertShader = [vertShaderPathname cStringUsingEncoding:NSUTF8StringEncoding];
 	const char *fragShader = [fragShaderPathname cStringUsingEncoding:NSUTF8StringEncoding];
-	pgLogAnyGlErrors("In loadShaders");
-	PGResult result = pgProgramCreateAndBuild(&_pgprogram, vertShader, fragShader);
-	if (PGR_OK != result)
-	{
-		pgLog(PGL_Error, "Failed to build program (%d), logs:\n-- Vertex --\n%s\n-- Fragment --\n%s\n-- Link --\n%s",
-			  result,
-			  pgProgramVertexShaderCompileLog(_pgprogram),
-			  pgProgramFragmentShaderCompileLog(_pgprogram),
-			  pgProgramLinkLog(_pgprogram));
-	}
-	else
-	{
-		pgLog(PGL_Info, "Built program successfully (%d), logs:\n-- Vertex --\n%s\n-- Fragment --\n%s\n-- Link --\n%s",
-			  result,
-			  pgProgramVertexShaderCompileLog(_pgprogram),
-			  pgProgramFragmentShaderCompileLog(_pgprogram),
-			  pgProgramLinkLog(_pgprogram));
-	}
-	return result == PGR_OK;
+	
+	_prg = LGPrgNewFromFiles(vertShader, fragShader);
+	
+	assert(_prg);
+	
+	return TRUE;
 }
 
 @end
